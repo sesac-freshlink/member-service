@@ -74,22 +74,21 @@ member-service/
 └── src/test/java/com/freshlink/member/
 ```
 
-## 6. 로컬에서 실행하기
+## 6. dev 환경에서 실행하기
 
 > 아직 뼈대만 있는 상태다. 첫 작업으로 [Spring Initializr](https://start.spring.io)에서 Gradle·Java 21·Web·JPA·MySQL Driver로 프로젝트를 만들고 이 구조에 맞춰 넣는다.
 
-1. [local-dev](https://github.com/sesac-freshlink/local-dev) 레포에서 `docker compose up -d` (MySQL과 더미 데이터가 뜬다)
-2. 이 레포에서
+개발할 때도 AWS dev 환경의 RDS·SQS·Cognito를 그대로 쓴다. AWS 로그인, DB 포트 포워딩(SSM), 개인 큐 설정은 [개발 환경 접속 가이드](https://github.com/sesac-freshlink/.github/blob/main/docs/개발환경-접속.md)를 따른다.
 
 ```bash
-export DB_PASSWORD=<local-dev의 member_app 비밀번호>
-export COGNITO_USER_POOL_ID=<개발용 UserPoolId>   # 점주 storeId 연결에만 쓴다
+export SPRING_PROFILES_ACTIVE=dev
+export DB_URL=jdbc:mysql://127.0.0.1:3306/member      # SSM 포트 포워딩으로 연결한 dev RDS
+export DB_PASSWORD=<dev Secrets Manager의 member_app 비밀번호>
+export COGNITO_USER_POOL_ID=<dev UserPoolId>          # 점주 storeId 연결에만 쓴다
 ./gradlew bootRun
 ```
 
-gateway 없이 직접 부를 때는 `X-User-Id`, `X-User-Role` 헤더를 손으로 붙인다.
-
-3. `http://localhost:8081/swagger-ui.html`에서 API를 확인한다.
+gateway 없이 직접 부를 때는 `X-User-Id`, `X-User-Role` 헤더를 손으로 붙인다. API는 실행한 서비스의 `/swagger-ui.html`에서 확인한다.
 
 ## 7. 브랜치와 기여
 
