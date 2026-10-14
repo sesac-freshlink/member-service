@@ -7,7 +7,7 @@
 | 담당 | 김경우 |
 | 관련 기능 ID | C-01 회원가입, C-02 로그인·로그아웃, U-01 점포 검색 |
 | 기술 | Java 21, Spring Boot 3, Spring Data JPA, MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
-| 관측성 | Actuator·Micrometer → Prometheus (`/actuator/prometheus`, 관리 포트 8081) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
+| 관측성 | Actuator·Micrometer → Prometheus (앱 포트의 `/actuator/prometheus`, 관리 포트를 따로 두지 않는다. 쿠버네티스에서는 모든 컨테이너가 8080) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
 | DB | RDS `freshlink-mysql`의 `member` 스키마 (DB 사용자 `member_app`) |
 | 배포 | GitHub Actions → ECR `freshlink/member-service` → ArgoCD → EKS |
 

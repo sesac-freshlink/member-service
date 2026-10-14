@@ -1,6 +1,6 @@
 # member-service - AI 작업 가이드
 
-> 회원 프로필과 점포. 가입·로그인·토큰 발급은 Amazon Cognito가 하므로 비밀번호·토큰을 다루지 않는다. 담당: 김경우. 포트 8081, DB `member` 스키마.
+> 회원 프로필과 점포. 가입·로그인·토큰 발급은 Amazon Cognito가 하므로 비밀번호·토큰을 다루지 않는다. 담당: 김경우. 로컬 포트 8081 (쿠버네티스 8080), DB `member` 스키마.
 
 ---
 
@@ -35,7 +35,7 @@
 ✅ 인증: gateway가 Cognito ID 토큰을 검증하고 X-User-Id(sub, UUID 문자열)·X-User-Role·X-Store-Id 헤더로 넘긴다. 서비스는 토큰을 다시 검증하지 않는다
 ✅ 실시간 재고: 점주 화면이 3초마다 GET /owner/inventory를 조회한다 (폴링)
 ✅ 주문 저장소 DynamoDB 도입은 검토 중, 미정. 어느 쪽도 가정하지 말고 사용자에게 묻는다
-✅ 관측성(서비스·gateway): Actuator(관리 포트 8081, health·prometheus), Micrometer Tracing → Zipkin, JSON 로그(traceId)
+✅ 관측성(서비스·gateway): Actuator는 앱 포트에 둔다 (관리 포트 따로 없음, management.server.port 쓰지 않음). 쿠버네티스는 모든 컨테이너 8080, 로컬은 서비스별 8080~8084. health(liveness·readiness)·prometheus, Micrometer Tracing → Zipkin, JSON 로그(traceId)
 ✅ 배포 설정(gitops values, IRSA, 큐)은 이 레포에서 고치지 않는다 → freshlink-infra 담당에게 알린다
 ```
 
@@ -49,7 +49,6 @@
 ✅ 점주-점포 연결은 Cognito AdminUpdateUserAttributes로 custom:storeId를 넣는다 (IRSA 권한, 이 User Pool만)
 ✅ 그룹(OWNER/CUSTOMER) 배정은 Cognito 가입 확인 Lambda 몫. 이 서비스가 하지 않는다
 ✅ 다른 서비스 표를 직접 조회하지 않는다
-⚠️ 로컬 서버 포트 8081이 관리(Actuator) 포트 8081과 겹친다. 로컬 프로필에서는 관리 포트를 따로 두지 않거나 다른 값으로 둔다
 ```
 
 ## 검증
