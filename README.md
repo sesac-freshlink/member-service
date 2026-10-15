@@ -6,7 +6,7 @@
 | --- | --- |
 | 담당 | 김경우 |
 | 관련 기능 ID | C-01 회원가입, C-02 로그인·로그아웃, U-01 점포 검색 |
-| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
+| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
 | 관측성 | Actuator·Micrometer → Prometheus (앱 포트의 `/actuator/prometheus`, 관리 포트를 따로 두지 않는다. 모든 서비스가 8080) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
 | DB | RDS `freshlink-mysql`의 `member` 스키마 (DB 사용자 `member_app`) |
 | 배포 | GitHub Actions → ECR `freshlink/member-service` → ArgoCD → EKS |
@@ -71,6 +71,7 @@ member-service/
 │   ├── member/   # 프로필 등록, 회원 엔티티
 │   └── store/    # 점포 엔티티, 점포 검색
 ├── src/main/resources/application.yml
+├── src/main/resources/db/migration/   # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
 ```
 
