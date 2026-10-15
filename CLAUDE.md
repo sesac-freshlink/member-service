@@ -44,6 +44,7 @@
 ## 이 레포 규칙
 
 ```
+✅ 테이블 변경은 Flyway 마이그레이션 파일(src/main/resources/db/migration/V<n>__<설명>.sql)로만. spring.jpa.hibernate.ddl-auto 쓰지 않는다. 적용된 파일은 고치지 않고 새 버전을 추가한다
 ✅ 회원 키 = Cognito sub (VARCHAR(36)). X-User-Id 헤더 값을 그대로 쓴다
 ⛔ 로그인 API, 비밀번호 칸, JWT 발급·검증 코드를 만들지 않는다
 ✅ 점주-점포 연결은 Cognito AdminUpdateUserAttributes로 custom:storeId를 넣는다 (IRSA 권한, 이 User Pool만)
