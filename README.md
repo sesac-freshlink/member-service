@@ -6,7 +6,7 @@
 | --- | --- |
 | 담당 | 김경우 |
 | 관련 기능 ID | C-01 회원가입, C-02 로그인·로그아웃, U-01 점포 검색 |
-| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
+| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
 | 관측성 | Actuator·Micrometer → Prometheus (앱 포트의 `/actuator/prometheus`, 관리 포트를 따로 두지 않는다. 모든 서비스가 8080) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
 | DB | RDS `freshlink-mysql`의 `member` 스키마 (DB 사용자 `member_app`) |
 | 배포 | GitHub Actions → ECR `freshlink/member-service` → ArgoCD → EKS |
@@ -66,13 +66,34 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 ```
 member-service/
+├── build.gradle                       # Boot 4.0.8, Web·JPA·Validation·Actuator·MySQL·Testcontainers + common
 ├── src/main/java/com/freshlink/member/
-│   ├── config/   # Swagger, Cognito 클라이언트 설정
-│   ├── member/   # 프로필 등록, 회원 엔티티
-│   └── store/    # 점포 엔티티, 점포 검색
-├── src/main/resources/application.yml
+│   ├── MemberServiceApplication.java
+│   ├── common/                        # 도메인과 상관없는 공통 코드
+│   │   ├── config/   # Swagger, Cognito 클라이언트 설정
+│   │   └── error/    # MemberErrorCode(enum), GlobalExceptionHandler
+│   └── domain/                        # 도메인별 엔티티·서비스·API
+│       ├── auth/     # Cognito 연동 (점주 storeId 연결)
+│       ├── member/   # 프로필 등록, 회원 엔티티
+│       └── store/    # 점포 엔티티, 점포 검색
+├── src/main/resources/
+│   ├── application.yml                # 공통. 값은 환경 변수
+│   ├── application-dev.yml            # 로그 레벨만 다름
+│   ├── application-prod.yml
+│   └── db/migration/                  # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
+    └── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
 ```
+
+## 5-1. 오류 처리
+
+규칙은 .github 레포 `docs/백엔드-공통-규칙.md` 6장. 응답 모양은 common 라이브러리, 오류 목록과 핸들러는 이 레포에 있다.
+
+| 할 일 | 방법 |
+| --- | --- |
+| 업무 오류 던지기 | `throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);` 한 줄 |
+| 오류 코드 추가 | `common/error/MemberErrorCode`에 `XXX(404, "메시지")` 한 줄. 핸들러는 안 건드린다 |
+| 응답 모양 | 항상 `{"code": "MEMBER_NOT_FOUND", "message": "회원이 없습니다", "traceId": "4bf92f3577b34da6"}`. `@Valid` 실패는 400 `VALIDATION_ERROR`(message에 필드별 사유), 없는 경로는 404 `NOT_FOUND`, 그 밖은 500 `INTERNAL_ERROR`(원인은 로그에만) |
 
 ## 6. dev 환경에서 실행하기
 

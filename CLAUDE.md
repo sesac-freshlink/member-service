@@ -44,11 +44,14 @@
 ## 이 레포 규칙
 
 ```
+✅ 테이블 변경은 Flyway 마이그레이션 파일(src/main/resources/db/migration/V<n>__<설명>.sql)로만. spring.jpa.hibernate.ddl-auto 쓰지 않는다. 적용된 파일은 고치지 않고 새 버전을 추가한다
 ✅ 회원 키 = Cognito sub (VARCHAR(36)). X-User-Id 헤더 값을 그대로 쓴다
 ⛔ 로그인 API, 비밀번호 칸, JWT 발급·검증 코드를 만들지 않는다
 ✅ 점주-점포 연결은 Cognito AdminUpdateUserAttributes로 custom:storeId를 넣는다 (IRSA 권한, 이 User Pool만)
 ✅ 그룹(OWNER/CUSTOMER) 배정은 Cognito 가입 확인 Lambda 몫. 이 서비스가 하지 않는다
 ✅ 다른 서비스 표를 직접 조회하지 않는다
+✅ 패키지: common/(config·error·log·messaging)은 도메인과 상관없는 공통 코드, domain/<도메인>은 엔티티·서비스·API
+✅ 오류: throw new BusinessException(MemberErrorCode.XXX). 코드 추가는 common/error/MemberErrorCode enum에 한 줄. 응답은 항상 code·message·traceId (common/error/GlobalExceptionHandler는 안 건드린다)
 ```
 
 ## 검증
