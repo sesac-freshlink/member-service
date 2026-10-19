@@ -50,6 +50,8 @@
 ✅ 점주-점포 연결은 Cognito AdminUpdateUserAttributes로 custom:storeId를 넣는다 (IRSA 권한, 이 User Pool만)
 ✅ 그룹(OWNER/CUSTOMER) 배정은 Cognito 가입 확인 Lambda 몫. 이 서비스가 하지 않는다
 ✅ 다른 서비스 표를 직접 조회하지 않는다
+✅ 패키지: common/(config·error·log·messaging)은 도메인과 상관없는 공통 코드, domain/<도메인>은 엔티티·서비스·API
+✅ 오류: throw new BusinessException(MemberErrorCode.XXX). 코드 추가는 common/error/MemberErrorCode enum에 한 줄. 응답은 항상 code·message·traceId (common/error/GlobalExceptionHandler는 안 건드린다)
 ```
 
 ## 검증
