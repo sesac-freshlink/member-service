@@ -1,12 +1,12 @@
 # member-service
 
-> FreshLink의 **회원 프로필과 점포**를 다루는 서비스. 회원 프로필을 저장하고 점주를 점포에 연결하며, 고객이 점포를 검색할 수 있게 한다. 가입·로그인·토큰 발급은 **Amazon Cognito**가 하므로 이 서비스는 비밀번호와 토큰을 다루지 않는다.
+> FreshLink의 **회원 프로필과 점포**를 다루는 서비스. 고객 프로필을 저장하고, 관리자가 점포와 점주 계정을 등록하며, 고객이 점포를 검색할 수 있게 한다. 가입·로그인·토큰 발급은 **Amazon Cognito**가 하므로 이 서비스는 비밀번호를 저장하지 않고 토큰을 다루지 않는다.
 
 | 항목 | 내용 |
 | --- | --- |
 | 담당 | 김경우 |
-| 관련 기능 ID | C-01 회원가입, C-02 로그인·로그아웃, U-01 점포 검색 |
-| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 (Cognito `AdminUpdateUserAttributes`) |
+| 관련 기능 ID | C-01 회원가입(프로필), C-02 로그인·로그아웃, U-01 점포 검색, A-01 점포·점주 등록, A-02 점포 목록·수정 |
+| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 Cognito (AD-01 점주 계정: `ListUsers`·`AdminCreateUser`·`AdminSetUserPassword`·`AdminAddUserToGroup`·`AdminDeleteUser`) |
 | 관측성 | Actuator·Micrometer → Prometheus (앱 포트의 `/actuator/prometheus`, 관리 포트를 따로 두지 않는다. 모든 서비스가 8080) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
 | DB | RDS `freshlink-mysql`의 `member` 스키마 (DB 사용자 `member_app`) |
 | 배포 | GitHub Actions → ECR `freshlink/member-service` → ArgoCD → EKS |
@@ -25,17 +25,18 @@ sequenceDiagram
     participant COG as Amazon Cognito
     participant GW as gateway
     participant MEM as member-service
-    U->>COG: signUp → 이메일 인증 → signIn
+    U->>COG: signUp → 이메일 인증(confirmSignUp) → signIn
+    Note over COG: 가입 확인 Lambda가 CUSTOMER 그룹에 넣는다
     COG-->>U: ID 토큰 (sub, cognito:groups, custom:storeId)
-    U->>GW: POST /api/members (Bearer ID 토큰, 처음 한 번)
+    U->>GW: POST /api/members/me (Bearer ID 토큰, 처음 한 번)
     GW->>GW: 토큰 검증 (Cognito 공개 키)
     GW->>MEM: X-User-Id(sub), X-User-Role 헤더를 붙여 전달
-    MEM->>MEM: sub를 키로 프로필 저장
+    MEM->>MEM: sub를 회원 ID로 프로필 저장
 ```
 
 **토큰 발급은 Amazon Cognito, 토큰 검증은 [gateway](https://github.com/sesac-freshlink/gateway)** 가 한다. 이 서비스는 gateway가 붙여 준 `X-User-Id`(= Cognito `sub`, UUID 문자열)만 믿고 쓴다.
 
-> **변경 (2026-10-13):** 처음에는 이 서비스가 비밀번호 해시를 저장하고 HS256 JWT를 발급하기로 했으나, Amazon Cognito로 옮겼다. 로그인 API, 비밀번호 칸, JWT 발급 코드, 공유 서명 키가 모두 빠진다. 이유는 [infra/docs/기술스택과 선택이유.md](https://github.com/sesac-freshlink/infra/blob/main/docs/기술스택과%20선택이유.md) 3-7.
+> **변경 (2026-10-13):** 처음에는 이 서비스가 비밀번호 해시를 저장하고 HS256 JWT를 발급하기로 했으나, Amazon Cognito로 옮겼다. 로그인 API, 비밀번호 칸, JWT 발급 코드, 공유 서명 키가 모두 빠진다. AD-01 점주 초기 비밀번호만 요청으로 받아 Cognito에 넘기고 DB·로그에 남기지 않는다. 이유는 [infra/docs/기술스택과 선택이유.md](https://github.com/sesac-freshlink/infra/blob/main/docs/기술스택과%20선택이유.md) 3-7.
 
 ## 3. API
 
@@ -57,16 +58,17 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 ### Cognito와 이어지는 부분
 
-- 점주를 점포에 연결할 때 Cognito `AdminUpdateUserAttributes`로 `custom:storeId`를 넣는다. 다음에 받는 ID 토큰부터 `custom:storeId`가 들어간다(화면은 토큰을 강제로 새로 받는다). 권한은 IRSA Role로 이 User Pool에만 준다.
-- 그룹(OWNER/CUSTOMER) 배정은 가입 확인 Lambda 트리거가 화면이 넘긴 `clientMetadata.role`을 보고 하므로 이 서비스가 하지 않는다.
+- 고객 계정: 화면이 Amplify로 Cognito에 직접 가입한다. CUSTOMER 그룹은 가입 확인 Lambda 트리거가 넣는다(이메일 인증 확인 때만, 화면이 OWNER·ADMIN을 요청해도 CUSTOMER만). 이 서비스는 로그인 뒤 프로필(MB-02)만 저장한다.
+- 점주 계정(AD-01): 관리자가 만든 계정은 가입 확인 Lambda를 거치지 않으므로 이 서비스가 만든다. 사용자 이름 = 이메일, `email_verified=true`, `custom:storeId` = 점포 ID(생성 때 같이 넣는다), 초대 메일 없음, 영구 비밀번호, OWNER 그룹. 중간에 실패하면 이번 요청이 만든 계정을 지운다. 점포 ID를 바꾸는 기능은 아직 없다(만들면 `AdminUpdateUserAttributes`를 쓴다).
+- Cognito 관리자 권한은 IRSA Role로 이 User Pool에만 준다. `COGNITO_USER_POOL_ID`·`AWS_REGION`은 배포 설정(infra)이 넣는다.
 - 더미 점주 3명은 시드 스크립트가 Cognito와 이 DB에 같이 넣는다 (E-12).
 
 ## 4. 데이터 모델
 
 | 표 | 주요 컬럼 |
 | --- | --- |
-| `member` | sub(PK, Cognito 사용자 ID, `VARCHAR(36)`), email, name, role(OWNER/CUSTOMER), created_at. 비밀번호 칸은 없다 |
-| `store` | id, store_code, name, address, owner_id(= member.sub) |
+| `member` | id(PK, Cognito `sub`, `VARCHAR(36)`), role(CUSTOMER/OWNER), email(점주만), name·nickname·nickname_normalized(UNIQUE, 공백 제거 + 소문자)·region(고객만), created_at, updated_at. 비밀번호 칸은 없다 |
+| `store` | id(PK, = Cognito `custom:storeId`), store_code(UNIQUE, `S`+id), name(UNIQUE), address, region, status(PENDING/ACTIVE/INACTIVE), owner_member_id(UNIQUE, = member.id, `PENDING`만 NULL), created_at, updated_at |
 
 다른 서비스의 표는 직접 조회하지 않는다. 필요하면 API로 받는다.
 
@@ -76,7 +78,7 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 ```
 member-service/
-├── build.gradle                       # Boot 4.0.8, Web·JPA·Validation·Actuator·MySQL·Testcontainers + common + AWS SDK Cognito·STS
+├── build.gradle                       # Boot 4.0.8, Web·JPA·Validation·Actuator·Flyway·MySQL·Testcontainers + common + AWS SDK Cognito·STS
 ├── src/main/java/com/freshlink/member/
 │   ├── MemberServiceApplication.java
 │   ├── common/                        # 도메인과 상관없는 공통 코드
@@ -113,8 +115,6 @@ member-service/
 
 ## 6. dev 환경에서 실행하기
 
-> Spring 뼈대(Boot 4.0.8, Gradle 9.8.1, Java 21)까지 들어 있다. 엔티티·API는 없다.
->
 > **DB 없이 IntelliJ에서 띄우기:** Docker Desktop을 켜고 `src/test/java/com/freshlink/member/TestMemberServiceApplication`을 Run 한다. DB를 따로 띄우지 않아도 MySQL 8.4 이미지를 받아 컨테이너로 띄우고 자동으로 붙는다 (Testcontainers 라이브러리 기능). main 소스 변경사항이 그대로 반영된다. RDS가 준비되면 아래처럼 `DB_URL` 환경 변수만 주고 `MemberServiceApplication`으로 실행한다.
 
 개발할 때도 AWS dev 환경의 RDS·SQS·Cognito를 그대로 쓴다. AWS 로그인, DB 포트 포워딩(SSM), 개인 큐 설정은 [개발 환경 접속 가이드](https://github.com/sesac-freshlink/.github/blob/main/docs/개발환경-접속.md)를 따른다.
@@ -123,7 +123,8 @@ member-service/
 export SPRING_PROFILES_ACTIVE=dev
 export DB_URL=jdbc:mysql://127.0.0.1:3306/member      # SSM 포트 포워딩으로 연결한 dev RDS
 export DB_PASSWORD=<dev Secrets Manager의 member_app 비밀번호>
-export COGNITO_USER_POOL_ID=<dev UserPoolId>          # 점주 storeId 연결에만 쓴다
+export COGNITO_USER_POOL_ID=<dev UserPoolId>          # AD-01 점주 계정 생성에만 쓴다
+export AWS_REGION=ap-northeast-2                      # 없으면 ap-northeast-2
 ./gradlew bootRun
 ```
 
