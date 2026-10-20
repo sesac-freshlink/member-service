@@ -3,6 +3,12 @@
 server:
   port: 8080
 
+app:
+  cognito:
+    # AD-01 점주 계정 생성. User Pool ID는 인프라가 클러스터 공통 환경 변수로 넣는다
+    user-pool-id: ${COGNITO_USER_POOL_ID:}
+    region: ${AWS_REGION:ap-northeast-2}
+
 spring:
   application:
     name: member-service

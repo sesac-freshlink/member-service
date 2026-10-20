@@ -55,6 +55,33 @@ public class Store {
     protected Store() {
     }
 
+    /** AD-01 1단계: 등록 중(PENDING) 점포. 점주는 아직 없다 */
+    public static Store pending(String name, String address, Region region) {
+        Store s = new Store();
+        s.name = name;
+        s.address = address;
+        s.region = region;
+        s.status = StoreStatus.PENDING;
+        return s;
+    }
+
+    /** 점포 코드 S + ID (0 채움 없음). INSERT 직후 같은 트랜잭션에서 한 번만 정한다 */
+    public void assignStoreCode() {
+        if (this.storeCode != null) {
+            throw new IllegalStateException("점포 코드가 이미 있다: " + storeCode);
+        }
+        this.storeCode = "S" + id;
+    }
+
+    /** AD-01 마지막 단계: 점주를 연결하고 ACTIVE로 */
+    public void activate(String ownerMemberId) {
+        if (status != StoreStatus.PENDING) {
+            throw new IllegalStateException("등록 중인 점포만 활성화한다: storeId=" + id + " status=" + status);
+        }
+        this.ownerMemberId = ownerMemberId;
+        this.status = StoreStatus.ACTIVE;
+    }
+
     /** AD-03: 보낸 값만 바꾼다. 점포 ID·코드·점주 연결·상태는 그대로다. 등록 중(PENDING)은 부르는 쪽이 막는다 */
     public void update(String name, String address, Region region) {
         if (name != null) {

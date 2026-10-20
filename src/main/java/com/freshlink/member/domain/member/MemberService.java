@@ -2,10 +2,12 @@ package com.freshlink.member.domain.member;
 
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
+import com.freshlink.member.common.error.UniqueKeys;
 import com.freshlink.member.domain.store.StoreRepository;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,18 +45,27 @@ public class MemberService {
             return new RegisterResult(existing.get(), false);
         }
         if (memberRepository.existsByNicknameNormalized(Member.normalizeNickname(req.nickname()))) {
-            throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            // 같은 sub의 동시 요청이 방금 이 닉네임으로 저장했을 수 있다. 그러면 중복이 아니라 재요청이다
+            return memberRepository.findById(memberId)
+                    .map(m -> new RegisterResult(m, false))
+                    .orElseThrow(() -> new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED));
         }
         try {
             Member saved = transactionTemplate.execute(s -> memberRepository.saveAndFlush(
                     Member.customer(memberId, req.name(), req.nickname(), req.region())));
             log.info("고객 프로필 등록 memberId={} region={}", memberId, req.region());
             return new RegisterResult(saved, true);
-        } catch (DataIntegrityViolationException e) {
-            // 같은 sub가 동시에 먼저 저장했으면 그 결과를 돌려주고, 아니면 닉네임이 먼저 쓰인 것이다
-            return memberRepository.findById(memberId)
-                    .map(m -> new RegisterResult(m, false))
-                    .orElseThrow(() -> new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED));
+        } catch (DataIntegrityViolationException | ConcurrencyFailureException e) {
+            // UNIQUE 충돌이거나 두 UNIQUE 인덱스를 동시에 잡다 생긴 교착(deadlock)이다.
+            // 같은 sub가 먼저 저장했으면 그 결과를 돌려주고, 닉네임 UNIQUE 충돌이면 409, 그 밖의 무결성 오류는 그대로 던진다
+            Optional<Member> saved = memberRepository.findById(memberId);
+            if (saved.isPresent()) {
+                return new RegisterResult(saved.get(), false);
+            }
+            if (e instanceof DataIntegrityViolationException d && UniqueKeys.isViolation(d, UniqueKeys.MEMBER_NICKNAME)) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
         }
     }
 

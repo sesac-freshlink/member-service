@@ -157,6 +157,26 @@ class MemberProfileIntegrationTest {
     }
 
     @Test
+    void 같은_sub로_동시에_보내면_하나만_201이고_나머지는_200() throws Exception {
+        String sub = sub();
+        String n = nick();
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        try {
+            java.util.List<Future<Integer>> results = new java.util.ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                results.add(pool.submit(() -> register(sub, "CUSTOMER", body("김경우", n, "SEOUL"))
+                        .andReturn().getResponse().getStatus()));
+            }
+            java.util.List<Integer> codes = new java.util.ArrayList<>();
+            for (Future<Integer> f : results) codes.add(f.get());
+            assertThat(codes).as("응답 코드 %s", codes).containsOnlyOnce(201);
+            assertThat(codes.stream().filter(c -> c == 200)).as("응답 코드 %s", codes).hasSize(2);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
     void 고객이_아니면_403_FORBIDDEN() throws Exception {
         register(sub(), "OWNER", body("김경우", nick(), "SEOUL"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
