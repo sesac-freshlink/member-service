@@ -79,6 +79,9 @@ class StoreSearchIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(2));
         mockMvc.perform(get("/stores").param("region", "DAEJEON").param("keyword", "   "))
                 .andExpect(jsonPath("$.length()").value(2));
+        mockMvc.perform(get("/stores").param("region", "DAEJEON").param("keyword", " ".repeat(60)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
@@ -112,5 +115,8 @@ class StoreSearchIntegrationTest {
         mockMvc.perform(get("/stores").param("keyword", "가".repeat(51)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        // 길이 제한은 앞뒤 공백을 뺀 값으로 본다
+        mockMvc.perform(get("/stores").param("keyword", "  " + "가".repeat(50) + "  "))
+                .andExpect(status().isOk());
     }
 }
