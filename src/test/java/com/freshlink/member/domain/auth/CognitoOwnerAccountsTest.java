@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRe
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.MessageActionType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -110,5 +111,16 @@ class CognitoOwnerAccountsTest {
         CognitoOwnerAccounts noPool = new CognitoOwnerAccounts(client, "");
 
         assertThatThrownBy(() -> noPool.emailExists("a@b.c")).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void 이미_있는_이메일이면_OWNER_EMAIL_DUPLICATED이고_지우지_않는다() {
+        when(client.adminCreateUser(any(AdminCreateUserRequest.class)))
+                .thenThrow(UsernameExistsException.builder().message("exists").build());
+
+        assertThatThrownBy(() -> accounts.createOwner("owner9@freshlink.test", "Abcd!234", 9L))
+                .isInstanceOfSatisfying(com.freshlink.common.error.BusinessException.class,
+                        e -> assertThat(e.code()).isEqualTo("OWNER_EMAIL_DUPLICATED"));
+        org.mockito.Mockito.verify(client, org.mockito.Mockito.never()).adminDeleteUser(any(AdminDeleteUserRequest.class));
     }
 }

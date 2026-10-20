@@ -1,5 +1,7 @@
 package com.freshlink.member.domain.auth;
 
+import com.freshlink.common.error.BusinessException;
+import com.freshlink.member.common.error.MemberErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
@@ -11,6 +13,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminSetUse
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.MessageActionType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException;
 
 /**
  * Cognito 관리자 API로 점주 계정을 다룬다. 권한은 member IRSA Role (이 User Pool만).
@@ -42,7 +45,9 @@ public class CognitoOwnerAccounts implements OwnerAccounts {
     @Override
     public String createOwner(String email, String password, long storeId) {
         requirePool();
-        AdminCreateUserResponse created = client.adminCreateUser(AdminCreateUserRequest.builder()
+        AdminCreateUserResponse created;
+        try {
+            created = client.adminCreateUser(AdminCreateUserRequest.builder()
                 .userPoolId(userPoolId)
                 .username(email)
                 .messageAction(MessageActionType.SUPPRESS)   // 초대 메일을 보내지 않는다 (비밀번호는 관리자가 전달)
@@ -51,6 +56,10 @@ public class CognitoOwnerAccounts implements OwnerAccounts {
                         attr("email_verified", "true"),      // MVP 점주 테스트 계정은 인증 완료로 만든다 (명세 M6)
                         attr("custom:storeId", String.valueOf(storeId)))
                 .build());
+        } catch (UsernameExistsException e) {
+            // 중복 확인 뒤 같은 이메일 계정이 생긴 경우(동시 등록·대소문자만 다른 이메일). 만든 계정이 없으니 지울 것도 없다
+            throw new BusinessException(MemberErrorCode.OWNER_EMAIL_DUPLICATED);
+        }
         try {
             client.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
                     .userPoolId(userPoolId).username(email).password(password).permanent(true).build());

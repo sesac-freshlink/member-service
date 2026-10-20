@@ -158,6 +158,41 @@ class StoreRegistrationIntegrationTest {
     }
 
     @Test
+    void 계정_생성_중_같은_이메일이_확인되면_409이고_점포를_지운다() throws Exception {
+        when(ownerAccounts.createOwner(anyString(), anyString(), anyLong())).thenThrow(
+                new com.freshlink.common.error.BusinessException(
+                        com.freshlink.member.common.error.MemberErrorCode.OWNER_EMAIL_DUPLICATED));
+
+        register("ADMIN", body(name, email, PASSWORD))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OWNER_EMAIL_DUPLICATED"));
+        assertThat(storeCount(name)).isZero();
+        verify(ownerAccounts, never()).delete(anyString());
+    }
+
+    @Test
+    void 이메일은_소문자로_바꿔_확인하고_저장한다() throws Exception {
+        String sub = UUID.randomUUID().toString();
+        when(ownerAccounts.createOwner(eq(email), eq(PASSWORD), anyLong())).thenReturn(sub);
+
+        register("ADMIN", body(name, email.toUpperCase(), PASSWORD))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ownerEmail").value(email));
+        verify(ownerAccounts).emailExists(email);
+        assertThat(jdbc.queryForObject("SELECT email FROM member WHERE id = ?", String.class, sub)).isEqualTo(email);
+    }
+
+    @Test
+    void 특수문자는_Cognito_기호면_통과한다() throws Exception {
+        when(ownerAccounts.createOwner(anyString(), anyString(), anyLong()))
+                .thenAnswer(inv -> UUID.randomUUID().toString());   // 등록마다 다른 sub
+        for (String pw : new String[] {"Abcd123^", "Abcd123~", "Abcd123`", "Abcd123\\\\", "Abcd 123x", "Abcd123]"}) {
+            String u = UUID.randomUUID().toString().replace("-", "").substring(0, 6);
+            register("ADMIN", body("특수" + u, "s" + u + "@freshlink.test", pw)).andExpect(status().isCreated());
+        }
+    }
+
+    @Test
     void 입력_규칙을_어기면_400() throws Exception {
         String[] bad = {
                 body(name, email, "short1!"),          // 8자 미만
@@ -165,6 +200,7 @@ class StoreRegistrationIntegrationTest {
                 body(name, email, "ABCD!234"),         // 소문자 없음
                 body(name, email, "Abcd!efg"),         // 숫자 없음
                 body(name, email, "Abcd1234"),         // 특수문자 없음
+                body(name, email, "Abcd1234가"),       // 한글은 Cognito가 특수문자로 세지 않는다
                 body(name, "not-an-email", PASSWORD),
                 body("가", email, PASSWORD),
                 "{\"name\":\"" + name + "\",\"region\":\"JEJU\",\"ownerEmail\":\"" + email + "\",\"initialPassword\":\"" + PASSWORD + "\"}",

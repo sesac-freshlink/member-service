@@ -62,6 +62,10 @@ public class StoreRegistrationService {
         String sub;
         try {
             sub = ownerAccounts.createOwner(req.ownerEmail(), req.initialPassword(), storeId);
+        } catch (BusinessException e) {
+            // 계정 생성 중 같은 이메일 계정이 확인됨 (409). 이번 요청이 만든 점포만 지운다
+            deleteStoreQuietly(storeId);
+            throw e;
         } catch (RuntimeException e) {
             log.error("점포 등록 실패: Cognito 계정 생성 storeId={} ownerEmail={}", storeId, req.ownerEmail(), e);
             deleteStoreQuietly(storeId);
