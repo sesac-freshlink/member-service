@@ -43,7 +43,9 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | C-01 | 회원가입 (프로필 등록) | `POST /members` (토큰 필요) | Cognito 가입·이메일 인증을 마친 사용자가 처음 로그인하면 프로필(이름, 유형)이 `sub` 기준으로 저장된다. 같은 `sub`로 두 번 부르면 기존 프로필을 돌려준다 |
 | C-02 | 로그인·로그아웃 | 없음 (프론트가 Cognito와 직접) | 이 서비스에는 로그인 API가 없다. 프론트가 Amplify `signIn`·`signOut`으로 처리한다 |
-| U-01 | 점포 검색 | `GET /stores?keyword=` | 점포명·주소 일부로 검색하면 목록이 나온다 |
+| U-01 (ST-01) | 점포 검색 | `GET /stores?region=&keyword=` (공개) | `region`(없으면 `SEOUL`)의 `ACTIVE` 점포 중 점포명·주소 일부로 찾는다. 점포명순, 빈 검색어는 지역 전체, 결과가 없으면 빈 배열 |
+
+- 구현된 것: ST-01 점포 검색. 응답은 `storeId`·`storeCode`·`name`·`address`·`region`(상태·점주 정보는 내리지 않는다). 검색어의 `%`·`_`는 글자 그대로 찾는다.
 
 API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서를 보고 개발한다.
 
@@ -75,14 +77,15 @@ member-service/
 │   └── domain/                        # 도메인별 엔티티·서비스·API
 │       ├── auth/     # Cognito 연동 (점주 storeId 연결)
 │       ├── member/   # 프로필 등록, 회원 엔티티
-│       └── store/    # 점포 엔티티, 점포 검색
+│       └── store/    # 점포 엔티티(Store·Region·StoreStatus), 점포 검색(StoreController·StoreService)
 ├── src/main/resources/
 │   ├── application.yml                # 공통. 값은 환경 변수
 │   ├── application-dev.yml            # 로그 레벨만 다름
 │   ├── application-prod.yml
 │   └── db/migration/                  # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
-    └── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
+    ├── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
+    └── domain/store/StoreSearchIntegrationTest.java   # 점포 검색 (Testcontainers MySQL)
 ```
 
 ## 5-1. 오류 처리
