@@ -32,8 +32,8 @@ class GlobalExceptionHandlerTest {
     void BusinessException은_enum의_status와_이름으로_나간다() throws Exception {
         mockMvc.perform(get("/test-errors/business"))
                 .andExpect(status().is(404))
-                .andExpect(jsonPath("$.code").value("MEMBER_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value(MemberErrorCode.MEMBER_NOT_FOUND.message()))
+                .andExpect(jsonPath("$.code").value("MEMBER_PROFILE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value(MemberErrorCode.MEMBER_PROFILE_NOT_FOUND.message()))
                 .andExpect(jsonPath("$.traceId").exists());
     }
 
@@ -78,7 +78,7 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/business")
         String business() {
-            throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);
+            throw new BusinessException(MemberErrorCode.MEMBER_PROFILE_NOT_FOUND);
         }
 
         @PostMapping("/valid")
