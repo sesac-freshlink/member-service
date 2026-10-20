@@ -5,13 +5,16 @@ import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 관리자 점포 API. gateway가 /api/admin/**를 ADMIN만 통과시키고, 여기서도 한 번 더 본다 */
@@ -20,9 +23,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminStoreController {
 
     private final AdminStoreService adminStoreService;
+    private final StoreRegistrationService storeRegistrationService;
 
-    public AdminStoreController(AdminStoreService adminStoreService) {
+    public AdminStoreController(AdminStoreService adminStoreService, StoreRegistrationService storeRegistrationService) {
         this.adminStoreService = adminStoreService;
+        this.storeRegistrationService = storeRegistrationService;
+    }
+
+    /** AD-01 점포·점주 등록 */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminStoreResponse register(
+            @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
+            @Valid @RequestBody StoreRegistrationRequest request) {
+        requireAdmin(role);
+        return storeRegistrationService.register(request);
     }
 
     /** AD-02 점포 목록 (page는 0부터, 크기 20 고정) */

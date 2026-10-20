@@ -26,6 +26,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     boolean existsByNameAndIdNot(String name, Long id);
 
+    boolean existsByName(String name);
+
     /** AD-02: 점포와 점주 이메일(점주가 없으면 null), 등록일 최신순 */
     @Query(value = "select new com.freshlink.member.domain.store.StoreWithOwner(s, m.email) from Store s "
             + "left join com.freshlink.member.domain.member.Member m on m.id = s.ownerMemberId "

@@ -45,11 +45,12 @@ sequenceDiagram
 | C-01 (MB-02) | 고객 프로필 등록 | `POST /members/me` (CUSTOMER) | 이름·닉네임·지역을 `sub` 기준으로 저장한다. 새로 저장 201, 같은 `sub`로 다시 부르면 기존 프로필 200, 대소문자만 다른 닉네임은 409 `NICKNAME_DUPLICATED` |
 | C-01 (MB-03) | 내 정보 조회 | `GET /members/me` (CUSTOMER·OWNER) | 고객은 이름·닉네임·지역, 점주는 이메일·점포(점포 ID·코드·이름)·지역. 프로필이 없으면 404 `MEMBER_PROFILE_NOT_FOUND` |
 | C-02 | 로그인·로그아웃 | 없음 (프론트가 Cognito와 직접) | 이 서비스에는 로그인 API가 없다. 프론트가 Amplify `signIn`·`signOut`으로 처리한다 |
+| A-01 (AD-01) | 점포·점주 등록 | `POST /admin/stores` (ADMIN) | 점포명·주소·시도·점주 이메일·초기 비밀번호로 등록하면 201, 점포는 `ACTIVE`, 점주는 OWNER 그룹·이메일 인증 완료·`custom:storeId`(= 점포 ID)·영구 비밀번호인 Cognito 계정. 점포명 중복(등록 중 포함) 409 `STORE_NAME_DUPLICATED`, Cognito에 같은 이메일(미인증 포함) 409 `OWNER_EMAIL_DUPLICATED`, 중간 실패 500 `STORE_REGISTRATION_FAILED`(이번 요청이 만든 계정·점포는 지운다) |
 | A-02 (AD-02) | 관리자 점포 목록 | `GET /admin/stores?page=` (ADMIN) | 모든 상태 점포를 등록일 최신순으로 20개씩. 점주 이메일 포함(등록 중 점포는 `null`일 수 있다). 페이지 형식 `{content, page, size, totalElements, totalPages}` |
 | A-02 (AD-03) | 관리자 점포 수정 | `PATCH /admin/stores/{storeId}` (ADMIN) | 보낸 필드(점포명·주소·시도)만 바꾼다. 바꿀 필드가 없으면 400, 없는 점포 404, 등록 중(`PENDING`) 409 `STORE_NOT_EDITABLE`, 다른 점포와 이름이 같으면 409 `STORE_NAME_DUPLICATED` |
 | U-01 (ST-01) | 점포 검색 | `GET /stores?region=&keyword=` (공개) | `region`(없으면 `SEOUL`)의 `ACTIVE` 점포 중 점포명·주소 일부로 찾는다. 점포명순, 빈 검색어는 지역 전체, 결과가 없으면 빈 배열 |
 
-- 구현된 것: ST-01 점포 검색, MB-01~03 회원 프로필, AD-02 점포 목록·AD-03 점포 수정(관리자). 오류 코드는 API 명세 5장 이름·문구와 같다(`MemberErrorCode`). `X-User-Role`은 그룹이 여럿이면 쉼표로 오므로 그중 하나만 맞으면 된다.
+- 구현된 것: ST-01 점포 검색, MB-01~03 회원 프로필, AD-01 점포·점주 등록, AD-02 점포 목록·AD-03 점포 수정(관리자). 오류 코드는 API 명세 5장 이름·문구와 같다(`MemberErrorCode`). `X-User-Role`은 그룹이 여럿이면 쉼표로 오므로 그중 하나만 맞으면 된다.
 - ST-01: 응답은 `storeId`·`storeCode`·`name`·`address`·`region`(상태·점주 정보는 내리지 않는다). 검색어의 `%`·`_`는 글자 그대로 찾는다.
 
 API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서를 보고 개발한다.
@@ -75,16 +76,16 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 ```
 member-service/
-├── build.gradle                       # Boot 4.0.8, Web·JPA·Validation·Actuator·MySQL·Testcontainers + common
+├── build.gradle                       # Boot 4.0.8, Web·JPA·Validation·Actuator·MySQL·Testcontainers + common + AWS SDK Cognito·STS
 ├── src/main/java/com/freshlink/member/
 │   ├── MemberServiceApplication.java
 │   ├── common/                        # 도메인과 상관없는 공통 코드
-│   │   ├── config/   # JPA Auditing, Swagger, Cognito 클라이언트 설정
+│   │   ├── config/   # JPA Auditing, Swagger, Cognito 클라이언트(CognitoConfig: COGNITO_USER_POOL_ID, AWS_REGION)
 │   │   ├── error/    # MemberErrorCode(enum), GlobalExceptionHandler
 │   │   └── web/      # gateway가 넘기는 헤더 이름과 역할 확인(AuthHeaders)
 │   └── domain/                        # 도메인별 엔티티·서비스·API
-│       ├── admin/    # 관리자 점포 목록·수정 (AdminStoreController·AdminStoreService)
-│       ├── auth/     # Cognito 연동 (점주 storeId 연결)
+│       ├── admin/    # 관리자 점포 등록·목록·수정 (AdminStoreController, StoreRegistrationService, AdminStoreService)
+│       ├── auth/     # 점주 Cognito 계정 (OwnerAccounts, CognitoOwnerAccounts: 계정 확인·생성·삭제)
 │       ├── member/   # 회원 엔티티, 닉네임 확인·프로필 등록·내 정보 (MemberController·MemberService)
 │       └── store/    # 점포 엔티티(Store·Region·StoreStatus), 점포 검색(StoreController·StoreService)
 ├── src/main/resources/
@@ -94,7 +95,8 @@ member-service/
 │   └── db/migration/                  # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
     ├── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
-    ├── domain/admin/AdminStoreIntegrationTest.java    # 관리자 점포 목록·수정 (Testcontainers MySQL)
+    ├── domain/admin/                                   # 관리자 점포 등록(Cognito 목)·목록·수정 (Testcontainers MySQL)
+    ├── domain/auth/CognitoOwnerAccountsTest.java      # Cognito 요청 모양 (SDK 클라이언트 목)
     ├── domain/member/MemberProfileIntegrationTest.java # 닉네임·프로필·내 정보 (Testcontainers MySQL)
     └── domain/store/StoreSearchIntegrationTest.java   # 점포 검색 (Testcontainers MySQL)
 ```

@@ -38,6 +38,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-flyway'       // 테이블은 Flyway 마이그레이션으로 관리 (db/migration/V1__ 부터)
     runtimeOnly 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:4.2.0')   // AWS SDK 버전 관리 (order-service와 같은 BOM)
+    implementation 'software.amazon.awssdk:cognitoidentityprovider'           // AD-01 점주 Cognito 계정 생성 (AdminCreateUser 등)
+    runtimeOnly 'software.amazon.awssdk:sts'                                    // IRSA(웹 아이덴티티 토큰)로 AWS 자격을 받는 데 필요
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
