@@ -2,6 +2,7 @@ package com.freshlink.member.domain.member;
 
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
+import com.freshlink.member.common.error.UniqueKeys;
 import com.freshlink.member.domain.store.StoreRepository;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -56,12 +57,12 @@ public class MemberService {
             return new RegisterResult(saved, true);
         } catch (DataIntegrityViolationException | ConcurrencyFailureException e) {
             // UNIQUE 충돌이거나 두 UNIQUE 인덱스를 동시에 잡다 생긴 교착(deadlock)이다.
-            // 같은 sub가 먼저 저장했으면 그 결과를 돌려주고, 아니면 닉네임이 먼저 쓰인 것이다
+            // 같은 sub가 먼저 저장했으면 그 결과를 돌려주고, 닉네임 UNIQUE 충돌이면 409, 그 밖의 무결성 오류는 그대로 던진다
             Optional<Member> saved = memberRepository.findById(memberId);
             if (saved.isPresent()) {
                 return new RegisterResult(saved.get(), false);
             }
-            if (e instanceof DataIntegrityViolationException) {
+            if (e instanceof DataIntegrityViolationException d && UniqueKeys.isViolation(d, UniqueKeys.MEMBER_NICKNAME)) {
                 throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
             }
             throw e;

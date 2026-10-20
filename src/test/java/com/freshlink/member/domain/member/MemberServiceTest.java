@@ -60,10 +60,20 @@ class MemberServiceTest {
     @Test
     void 저장_중_UNIQUE_충돌이고_같은_sub가_없으면_409() {
         when(members.findById(SUB)).thenReturn(Optional.empty());
-        when(members.saveAndFlush(any(Member.class))).thenThrow(new DataIntegrityViolationException("dup"));
+        when(members.saveAndFlush(any(Member.class))).thenThrow(new DataIntegrityViolationException(
+                "Duplicate entry 'fresh01' for key 'member.uk_member_nickname_normalized'"));
 
         assertThatThrownBy(() -> service.register(SUB, req)).isInstanceOfSatisfying(BusinessException.class,
                 e -> assertThat(e.code()).isEqualTo("NICKNAME_DUPLICATED"));
+    }
+
+    @Test
+    void 닉네임_충돌이_아닌_무결성_오류는_409로_바꾸지_않고_그대로_던진다() {
+        DataIntegrityViolationException tooLong = new DataIntegrityViolationException("Data too long for column 'name'");
+        when(members.findById(SUB)).thenReturn(Optional.empty());
+        when(members.saveAndFlush(any(Member.class))).thenThrow(tooLong);
+
+        assertThatThrownBy(() -> service.register(SUB, req)).isSameAs(tooLong);
     }
 
     @Test

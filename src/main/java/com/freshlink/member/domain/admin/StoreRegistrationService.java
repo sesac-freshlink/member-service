@@ -2,6 +2,7 @@ package com.freshlink.member.domain.admin;
 
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
+import com.freshlink.member.common.error.UniqueKeys;
 import com.freshlink.member.domain.auth.OwnerAccounts;
 import com.freshlink.member.domain.member.Member;
 import com.freshlink.member.domain.member.MemberRepository;
@@ -55,7 +56,10 @@ public class StoreRegistrationService {
                 return store.getId();
             });
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(MemberErrorCode.STORE_NAME_DUPLICATED);
+            if (UniqueKeys.isViolation(e, UniqueKeys.STORE_NAME)) {
+                throw new BusinessException(MemberErrorCode.STORE_NAME_DUPLICATED);
+            }
+            throw e;
         }
 
         // 3) Cognito 계정 (실패하면 계정은 createOwner가 정리한다)
