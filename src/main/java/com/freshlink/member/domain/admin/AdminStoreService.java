@@ -39,13 +39,13 @@ public class AdminStoreService {
     }
 
     /**
-     * AD-03: 등록 완료(ACTIVE·INACTIVE) 점포의 이름·주소·시도만 바꾼다.
+     * AD-03: 등록 완료(ACTIVE·INACTIVE) 점포의 이름·주소·시도만 바꾼다. 행을 잠근 채 읽고 고쳐 동시 수정이 서로 덮어쓰지 않는다.
      * 이름 중복은 미리 보고, 동시에 같은 이름으로 바꾸는 경우는 UNIQUE(uk_store_name) 충돌로 막는다
      */
     public AdminStoreResponse update(Long storeId, AdminStoreUpdateRequest req) {
         try {
             return transactionTemplate.execute(s -> {
-                Store store = storeRepository.findById(storeId)
+                Store store = storeRepository.findByIdForUpdate(storeId)
                         .orElseThrow(() -> new BusinessException(MemberErrorCode.STORE_NOT_FOUND));
                 if (store.getStatus() == StoreStatus.PENDING) {
                     throw new BusinessException(MemberErrorCode.STORE_NOT_EDITABLE);

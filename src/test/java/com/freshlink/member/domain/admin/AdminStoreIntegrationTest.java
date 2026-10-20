@@ -180,6 +180,23 @@ class AdminStoreIntegrationTest {
     }
 
     @Test
+    void 같은_점포를_동시에_다른_필드로_고쳐도_둘_다_남는다() throws Exception {
+        long id = store("동시" + uniq(), "ACTIVE", "2026-10-20 10:00:00");
+        String newName = "동시바꿈" + uniq();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var a = pool.submit(() -> update("ADMIN", id, "{\"name\":\"" + newName + "\"}").andReturn().getResponse().getStatus());
+            var b = pool.submit(() -> update("ADMIN", id, "{\"address\":\"세종 바뀐주소 9\"}").andReturn().getResponse().getStatus());
+            assertThat(a.get()).isEqualTo(200);
+            assertThat(b.get()).isEqualTo(200);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(jdbc.queryForObject("SELECT name FROM store WHERE id = ?", String.class, id)).isEqualTo(newName);
+        assertThat(jdbc.queryForObject("SELECT address FROM store WHERE id = ?", String.class, id)).isEqualTo("세종 바뀐주소 9");
+    }
+
+    @Test
     void 수정도_관리자만() throws Exception {
         long id = store("권한" + uniq(), "ACTIVE", "2026-10-20 10:00:00");
         update("OWNER", id, "{\"address\":\"x\"}").andExpect(status().isForbidden())

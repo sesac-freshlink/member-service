@@ -1,10 +1,12 @@
 package com.freshlink.member.domain.store;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,4 +32,9 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             + "order by s.createdAt desc, s.id desc",
             countQuery = "select count(s) from Store s")
     Page<StoreWithOwner> findAllWithOwner(Pageable pageable);
+
+    /** 고치기 전에 행을 잠근다 (SELECT … FOR UPDATE). 같은 점포를 동시에 고쳐도 서로 덮어쓰지 않는다 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Store s where s.id = :id")
+    Optional<Store> findByIdForUpdate(@Param("id") Long id);
 }
