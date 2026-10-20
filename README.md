@@ -99,9 +99,9 @@ member-service/
 
 | 할 일 | 방법 |
 | --- | --- |
-| 업무 오류 던지기 | `throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);` 한 줄 |
+| 업무 오류 던지기 | `throw new BusinessException(MemberErrorCode.MEMBER_PROFILE_NOT_FOUND);` 한 줄 |
 | 오류 코드 추가 | `common/error/MemberErrorCode`에 `XXX(404, "메시지")` 한 줄. 핸들러는 안 건드린다 |
-| 응답 모양 | 항상 `{"code": "MEMBER_NOT_FOUND", "message": "회원이 없습니다", "traceId": "4bf92f3577b34da6"}`. `@Valid` 실패는 400 `VALIDATION_ERROR`(message에 필드별 사유), 없는 경로는 404 `NOT_FOUND`, 그 밖은 500 `INTERNAL_ERROR`(원인은 로그에만) |
+| 응답 모양 | 항상 `{"code": "MEMBER_PROFILE_NOT_FOUND", "message": "회원 정보가 없습니다", "traceId": "4bf92f3577b34da6"}`. `@Valid` 실패는 400 `VALIDATION_ERROR`(message에 필드별 사유), 없는 경로는 404 `NOT_FOUND`, 그 밖은 500 `INTERNAL_ERROR`(원인은 로그에만) |
 
 ## 6. dev 환경에서 실행하기
 
