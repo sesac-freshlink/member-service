@@ -169,8 +169,8 @@ class MemberProfileIntegrationTest {
             }
             java.util.List<Integer> codes = new java.util.ArrayList<>();
             for (Future<Integer> f : results) codes.add(f.get());
-            assertThat(codes).containsOnlyOnce(201);
-            assertThat(codes.stream().filter(c -> c == 200)).hasSize(2);
+            assertThat(codes).as("응답 코드 %s", codes).containsOnlyOnce(201);
+            assertThat(codes.stream().filter(c -> c == 200)).as("응답 코드 %s", codes).hasSize(2);
         } finally {
             pool.shutdownNow();
         }
