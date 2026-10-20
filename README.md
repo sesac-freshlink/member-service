@@ -45,9 +45,11 @@ sequenceDiagram
 | C-01 (MB-02) | 고객 프로필 등록 | `POST /members/me` (CUSTOMER) | 이름·닉네임·지역을 `sub` 기준으로 저장한다. 새로 저장 201, 같은 `sub`로 다시 부르면 기존 프로필 200, 대소문자만 다른 닉네임은 409 `NICKNAME_DUPLICATED` |
 | C-01 (MB-03) | 내 정보 조회 | `GET /members/me` (CUSTOMER·OWNER) | 고객은 이름·닉네임·지역, 점주는 이메일·점포(점포 ID·코드·이름)·지역. 프로필이 없으면 404 `MEMBER_PROFILE_NOT_FOUND` |
 | C-02 | 로그인·로그아웃 | 없음 (프론트가 Cognito와 직접) | 이 서비스에는 로그인 API가 없다. 프론트가 Amplify `signIn`·`signOut`으로 처리한다 |
+| A-02 (AD-02) | 관리자 점포 목록 | `GET /admin/stores?page=` (ADMIN) | 모든 상태 점포를 등록일 최신순으로 20개씩. 점주 이메일 포함(등록 중 점포는 `null`일 수 있다). 페이지 형식 `{content, page, size, totalElements, totalPages}` |
+| A-02 (AD-03) | 관리자 점포 수정 | `PATCH /admin/stores/{storeId}` (ADMIN) | 보낸 필드(점포명·주소·시도)만 바꾼다. 바꿀 필드가 없으면 400, 없는 점포 404, 등록 중(`PENDING`) 409 `STORE_NOT_EDITABLE`, 다른 점포와 이름이 같으면 409 `STORE_NAME_DUPLICATED` |
 | U-01 (ST-01) | 점포 검색 | `GET /stores?region=&keyword=` (공개) | `region`(없으면 `SEOUL`)의 `ACTIVE` 점포 중 점포명·주소 일부로 찾는다. 점포명순, 빈 검색어는 지역 전체, 결과가 없으면 빈 배열 |
 
-- 구현된 것: ST-01 점포 검색, MB-01~03 회원 프로필. 오류 코드는 API 명세 5장 이름·문구와 같다(`MemberErrorCode`). `X-User-Role`은 그룹이 여럿이면 쉼표로 오므로 그중 하나만 맞으면 된다.
+- 구현된 것: ST-01 점포 검색, MB-01~03 회원 프로필, AD-02 점포 목록·AD-03 점포 수정(관리자). 오류 코드는 API 명세 5장 이름·문구와 같다(`MemberErrorCode`). `X-User-Role`은 그룹이 여럿이면 쉼표로 오므로 그중 하나만 맞으면 된다.
 - ST-01: 응답은 `storeId`·`storeCode`·`name`·`address`·`region`(상태·점주 정보는 내리지 않는다). 검색어의 `%`·`_`는 글자 그대로 찾는다.
 
 API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서를 보고 개발한다.
@@ -67,6 +69,8 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 다른 서비스의 표는 직접 조회하지 않는다. 필요하면 API로 받는다.
 
+시각 칼럼(`created_at`·`updated_at`)은 한국 시각 벽시계로 저장한다(`hibernate.timezone.default_storage: NORMALIZE` + `jdbc.time_zone: Asia/Seoul`, order-service와 같다). 응답은 `+09:00`이다.
+
 ## 5. 폴더 구조
 
 ```
@@ -79,6 +83,7 @@ member-service/
 │   │   ├── error/    # MemberErrorCode(enum), GlobalExceptionHandler
 │   │   └── web/      # gateway가 넘기는 헤더 이름과 역할 확인(AuthHeaders)
 │   └── domain/                        # 도메인별 엔티티·서비스·API
+│       ├── admin/    # 관리자 점포 목록·수정 (AdminStoreController·AdminStoreService)
 │       ├── auth/     # Cognito 연동 (점주 storeId 연결)
 │       ├── member/   # 회원 엔티티, 닉네임 확인·프로필 등록·내 정보 (MemberController·MemberService)
 │       └── store/    # 점포 엔티티(Store·Region·StoreStatus), 점포 검색(StoreController·StoreService)
@@ -89,6 +94,7 @@ member-service/
 │   └── db/migration/                  # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
     ├── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
+    ├── domain/admin/AdminStoreIntegrationTest.java    # 관리자 점포 목록·수정 (Testcontainers MySQL)
     ├── domain/member/MemberProfileIntegrationTest.java # 닉네임·프로필·내 정보 (Testcontainers MySQL)
     └── domain/store/StoreSearchIntegrationTest.java   # 점포 검색 (Testcontainers MySQL)
 ```

@@ -18,6 +18,8 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+        timezone:
+          default_storage: NORMALIZE   # OffsetDateTime을 jdbc.time_zone(KST) 벽시계로 저장 (order-service와 같다)
   jackson:
     time-zone: Asia/Seoul         # 시각은 ISO-8601 +09:00
 
