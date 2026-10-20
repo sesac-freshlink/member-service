@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.store;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,4 +16,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             + "and (s.name like :pattern escape '!' or s.address like :pattern escape '!') order by s.name asc")
     List<Store> search(@Param("region") Region region, @Param("status") StoreStatus status,
                        @Param("pattern") String pattern);
+
+    /** 점주의 점포 (owner_member_id는 유니크라 최대 1건) */
+    Optional<Store> findByOwnerMemberId(String ownerMemberId);
 }

@@ -41,11 +41,14 @@ sequenceDiagram
 
 | ID | 기능 | API | 완료 기준 |
 | --- | --- | --- | --- |
-| C-01 | 회원가입 (프로필 등록) | `POST /members` (토큰 필요) | Cognito 가입·이메일 인증을 마친 사용자가 처음 로그인하면 프로필(이름, 유형)이 `sub` 기준으로 저장된다. 같은 `sub`로 두 번 부르면 기존 프로필을 돌려준다 |
+| C-01 (MB-01) | 닉네임 중복 확인 | `GET /members/nickname-availability?nickname=` (공개) | 앞뒤 공백 제거 + 영문 소문자로 비교한다. 형식(2~10자, 한글·영문·숫자)이 틀리면 400 |
+| C-01 (MB-02) | 고객 프로필 등록 | `POST /members/me` (CUSTOMER) | 이름·닉네임·지역을 `sub` 기준으로 저장한다. 새로 저장 201, 같은 `sub`로 다시 부르면 기존 프로필 200, 대소문자만 다른 닉네임은 409 `NICKNAME_DUPLICATED` |
+| C-01 (MB-03) | 내 정보 조회 | `GET /members/me` (CUSTOMER·OWNER) | 고객은 이름·닉네임·지역, 점주는 이메일·점포(점포 ID·코드·이름)·지역. 프로필이 없으면 404 `MEMBER_PROFILE_NOT_FOUND` |
 | C-02 | 로그인·로그아웃 | 없음 (프론트가 Cognito와 직접) | 이 서비스에는 로그인 API가 없다. 프론트가 Amplify `signIn`·`signOut`으로 처리한다 |
 | U-01 (ST-01) | 점포 검색 | `GET /stores?region=&keyword=` (공개) | `region`(없으면 `SEOUL`)의 `ACTIVE` 점포 중 점포명·주소 일부로 찾는다. 점포명순, 빈 검색어는 지역 전체, 결과가 없으면 빈 배열 |
 
-- 구현된 것: ST-01 점포 검색. 응답은 `storeId`·`storeCode`·`name`·`address`·`region`(상태·점주 정보는 내리지 않는다). 검색어의 `%`·`_`는 글자 그대로 찾는다.
+- 구현된 것: ST-01 점포 검색, MB-01~03 회원 프로필. 오류 코드는 API 명세 5장 이름·문구와 같다(`MemberErrorCode`). `X-User-Role`은 그룹이 여럿이면 쉼표로 오므로 그중 하나만 맞으면 된다.
+- ST-01: 응답은 `storeId`·`storeCode`·`name`·`address`·`region`(상태·점주 정보는 내리지 않는다). 검색어의 `%`·`_`는 글자 그대로 찾는다.
 
 API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서를 보고 개발한다.
 
@@ -72,11 +75,12 @@ member-service/
 ├── src/main/java/com/freshlink/member/
 │   ├── MemberServiceApplication.java
 │   ├── common/                        # 도메인과 상관없는 공통 코드
-│   │   ├── config/   # Swagger, Cognito 클라이언트 설정
-│   │   └── error/    # MemberErrorCode(enum), GlobalExceptionHandler
+│   │   ├── config/   # JPA Auditing, Swagger, Cognito 클라이언트 설정
+│   │   ├── error/    # MemberErrorCode(enum), GlobalExceptionHandler
+│   │   └── web/      # gateway가 넘기는 헤더 이름과 역할 확인(AuthHeaders)
 │   └── domain/                        # 도메인별 엔티티·서비스·API
 │       ├── auth/     # Cognito 연동 (점주 storeId 연결)
-│       ├── member/   # 프로필 등록, 회원 엔티티
+│       ├── member/   # 회원 엔티티, 닉네임 확인·프로필 등록·내 정보 (MemberController·MemberService)
 │       └── store/    # 점포 엔티티(Store·Region·StoreStatus), 점포 검색(StoreController·StoreService)
 ├── src/main/resources/
 │   ├── application.yml                # 공통. 값은 환경 변수
@@ -85,6 +89,7 @@ member-service/
 │   └── db/migration/                  # Flyway SQL. V1__init.sql 부터
 └── src/test/java/com/freshlink/member/
     ├── common/error/GlobalExceptionHandlerTest.java   # 오류 응답 모양 (DB 없이)
+    ├── domain/member/MemberProfileIntegrationTest.java # 닉네임·프로필·내 정보 (Testcontainers MySQL)
     └── domain/store/StoreSearchIntegrationTest.java   # 점포 검색 (Testcontainers MySQL)
 ```
 

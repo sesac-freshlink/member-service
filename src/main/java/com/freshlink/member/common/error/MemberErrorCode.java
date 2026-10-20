@@ -8,12 +8,15 @@ import com.freshlink.common.error.ErrorCode;
  */
 public enum MemberErrorCode implements ErrorCode {
 
-    MEMBER_NOT_FOUND(404, "회원이 없습니다"),
-    MEMBER_ALREADY_EXISTS(409, "이미 등록된 회원입니다"),
+    // 이름·상태·문구는 member-service API 명세 5장과 같다
+    FORBIDDEN(403, "권한이 없습니다"),
+    MEMBER_PROFILE_NOT_FOUND(404, "회원 정보가 없습니다"),
+    NICKNAME_DUPLICATED(409, "이미 사용 중인 닉네임입니다"),
     STORE_NOT_FOUND(404, "점포가 없습니다"),
-    STORE_FORBIDDEN(403, "내 점포가 아닙니다"),
-    STORE_CLOSED(409, "영업 중이 아닌 점포입니다"),
-    SERVICE_UNAVAILABLE(503, "잠시 후 다시 시도해 주세요");
+    STORE_NOT_EDITABLE(409, "등록 중인 점포는 수정할 수 없습니다"),
+    STORE_NAME_DUPLICATED(409, "이미 있는 점포명입니다"),
+    OWNER_EMAIL_DUPLICATED(409, "이미 등록된 이메일입니다"),
+    STORE_REGISTRATION_FAILED(500, "점포 등록에 실패했습니다. 다시 시도해 주세요");
 
     private final int status;
     private final String message;
