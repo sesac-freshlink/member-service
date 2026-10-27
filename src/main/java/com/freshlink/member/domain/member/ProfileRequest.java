@@ -6,9 +6,10 @@ import jakarta.validation.constraints.Pattern;
 
 /** MB-02 요청. 이름은 앞뒤 공백을 지운 값으로 검사한다 (compact 생성자) */
 public record ProfileRequest(
-        @NotNull @Pattern(regexp = MemberRules.NAME_REGEX) String name,
-        @NotNull @Pattern(regexp = MemberRules.NICKNAME_REGEX) String nickname,
-        @NotNull Region region
+        @NotNull(message = "필수입니다") @Pattern(regexp = MemberRules.NAME_REGEX, message = MemberRules.NAME_MESSAGE) String name,
+        @NotNull(message = "필수입니다")
+        @Pattern(regexp = MemberRules.NICKNAME_REGEX, message = MemberRules.NICKNAME_MESSAGE) String nickname,
+        @NotNull(message = "필수입니다") Region region
 ) {
 
     public ProfileRequest {
