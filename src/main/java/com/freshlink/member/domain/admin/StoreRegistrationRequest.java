@@ -14,11 +14,12 @@ import jakarta.validation.constraints.Size;
  * 이메일은 소문자로 바꾼다 (User Pool 사용자 이름은 대소문자를 구분하지 않는다)
  */
 public record StoreRegistrationRequest(
-        @NotNull @Size(min = 2, max = 30) String name,
-        @NotBlank @Size(max = 255) String address,
-        @NotNull Region region,
-        @NotBlank @Email @Size(max = 255) String ownerEmail,
-        @NotNull @Size(max = 128)
+        @NotNull(message = "필수입니다") @Size(min = 2, max = 30, message = "2~30자여야 합니다") String name,
+        @NotBlank(message = "필수입니다") @Size(max = 255, message = "255자 이하여야 합니다") String address,
+        @NotNull(message = "필수입니다") Region region,
+        @NotBlank(message = "필수입니다") @Email(message = "이메일 형식이어야 합니다")
+        @Size(max = 255, message = "255자 이하여야 합니다") String ownerEmail,
+        @NotNull(message = "필수입니다") @Size(max = 128, message = "128자 이하여야 합니다")
         @Pattern(regexp = PASSWORD_REGEX,
                 message = "8자 이상, 대문자·소문자·숫자·특수문자를 각각 포함해야 합니다")
         String initialPassword

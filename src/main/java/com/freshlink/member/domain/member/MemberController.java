@@ -29,7 +29,8 @@ public class MemberController {
     /** MB-01 닉네임 중복 확인 (공개). 형식이 틀리면 400 */
     @GetMapping("/nickname-availability")
     public NicknameAvailabilityResponse nicknameAvailability(
-            @RequestParam(required = false) @NotNull @Pattern(regexp = "^\\s*[가-힣a-zA-Z0-9]{2,10}\\s*$") String nickname) {
+            @RequestParam(required = false) @NotNull(message = "필수입니다")
+            @Pattern(regexp = "^\\s*[가-힣a-zA-Z0-9]{2,10}\\s*$", message = MemberRules.NICKNAME_MESSAGE) String nickname) {
         return new NicknameAvailabilityResponse(nickname, memberService.isNicknameAvailable(nickname));
     }
 

@@ -44,7 +44,7 @@ public class AdminStoreController {
     @GetMapping
     public PageResponse<AdminStoreResponse> list(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
-            @RequestParam(defaultValue = "0") @Min(0) int page) {
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다") int page) {
         requireAdmin(role);
         return adminStoreService.list(page);
     }

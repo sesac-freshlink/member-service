@@ -86,6 +86,16 @@ class MemberProfileIntegrationTest {
         availability("한글닉네임1").andExpect(status().isOk());
     }
 
+    @Test
+    void 형식_오류_message는_칸_이름과_한국어_사유로_나온다() throws Exception {
+        availability("a").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("nickname: 2~10자 한글·영문·숫자여야 합니다"));
+        register(sub(), "CUSTOMER", body("김", nick(), "SEOUL")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("name: 2~30자 한글·영문이어야 합니다"));
+        register(sub(), "CUSTOMER", body("김경우", nick(), null)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("region: 필수입니다"));
+    }
+
     // ---------------------------------------------------------------- MB-02
 
     @Test

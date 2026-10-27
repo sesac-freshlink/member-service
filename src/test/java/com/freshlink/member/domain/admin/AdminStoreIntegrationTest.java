@@ -162,6 +162,14 @@ class AdminStoreIntegrationTest {
     }
 
     @Test
+    void 수정_형식_오류_message는_칸_이름과_한국어_사유로_나온다() throws Exception {
+        long id = store("문구" + uniq(), "ACTIVE", "2026-10-20 10:00:00");
+
+        update("ADMIN", id, "{\"name\":\"가\"}").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("name: 2~30자여야 합니다"));
+    }
+
+    @Test
     void 없는_점포_404_등록_중_점포_409_이름_중복_409() throws Exception {
         long pending = store("등록중" + uniq(), "PENDING", "2026-10-20 10:00:00");
         String taken = "있는이름" + uniq();

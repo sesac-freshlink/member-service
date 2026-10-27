@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Size;
 
 /** AD-03 요청. 보낸 필드만 바꾼다. 점포명은 앞뒤 공백을 지운 뒤 2~30자, 주소는 비어 있으면 안 된다 */
 public record AdminStoreUpdateRequest(
-        @Size(min = 2, max = 30) String name,
-        @Size(max = 255) @Pattern(regexp = ".*\\S.*", message = "비어 있으면 안 됩니다") String address,
+        @Size(min = 2, max = 30, message = "2~30자여야 합니다") String name,
+        @Size(max = 255, message = "255자 이하여야 합니다") @Pattern(regexp = ".*\\S.*", message = "비어 있으면 안 됩니다") String address,
         Region region
 ) {
 
