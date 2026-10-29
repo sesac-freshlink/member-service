@@ -3,6 +3,7 @@ package com.freshlink.member.domain.member;
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.error.UniqueKeys;
+import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.StoreRepository;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -21,12 +22,14 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final StoreRepository storeRepository;
     private final TransactionTemplate transactionTemplate;
+    private final SocialAccounts socialAccounts;
 
     public MemberService(MemberRepository memberRepository, StoreRepository storeRepository,
-                         TransactionTemplate transactionTemplate) {
+                         TransactionTemplate transactionTemplate, SocialAccounts socialAccounts) {
         this.memberRepository = memberRepository;
         this.storeRepository = storeRepository;
         this.transactionTemplate = transactionTemplate;
+        this.socialAccounts = socialAccounts;
     }
 
     /** MB-01: 정규화한 닉네임이 아직 없으면 사용 가능 (최종 검사는 MB-02 저장 때 UNIQUE로 한 번 더) */
@@ -37,12 +40,16 @@ public class MemberService {
 
     /**
      * MB-02 고객 프로필 등록. 같은 sub의 프로필이 있으면 새로 만들지 않고 그대로 돌려준다(created=false).
-     * 바깥에 트랜잭션을 두지 않는다: UNIQUE 충돌이 나면 롤백이 끝난 뒤 새로 읽어 같은 sub인지 닉네임 중복인지 가린다
+     * 바깥에 트랜잭션을 두지 않는다: UNIQUE 충돌이 나면 롤백이 끝난 뒤 새로 읽어 같은 sub인지 닉네임 중복인지 가린다.
+     * 구글로 처음 들어온 계정인데 같은 이메일로 이메일 가입한 계정이 있으면 409 EMAIL_SIGNUP_EXISTS (C-01 BFF, 10/29 막기)
      */
     public RegisterResult register(String memberId, ProfileRequest req) {
         Optional<Member> existing = memberRepository.findById(memberId);
         if (existing.isPresent()) {
             return new RegisterResult(existing.get(), false);
+        }
+        if (socialAccounts.emailSignupExistsFor(memberId)) {
+            throw new BusinessException(MemberErrorCode.EMAIL_SIGNUP_EXISTS);
         }
         if (memberRepository.existsByNicknameNormalized(Member.normalizeNickname(req.nickname()))) {
             // 같은 sub의 동시 요청이 방금 이 닉네임으로 저장했을 수 있다. 그러면 중복이 아니라 재요청이다
