@@ -6,7 +6,7 @@
 | --- | --- |
 | 담당 | 김경우 |
 | 관련 기능 ID | C-01 회원가입(프로필), C-02 로그인·로그아웃, U-01 점포 검색, A-01 점포·점주 등록, A-02 점포 목록·수정 |
-| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 Cognito (AD-01 점주 계정: `ListUsers`·`AdminCreateUser`·`AdminSetUserPassword`·`AdminAddUserToGroup`·`AdminDeleteUser`) |
+| 기술 | Java 21, Spring Boot 4.0.x, Spring Data JPA, Flyway(테이블 마이그레이션), MySQL, AWS SDK v2 Cognito (AD-01 점주 계정: `ListUsers`·`AdminCreateUser`·`AdminSetUserPassword`·`AdminAddUserToGroup`·`AdminDeleteUser`, MB-02 구글 계정 확인: `ListUsers`) |
 | 관측성 | Actuator·Micrometer → Prometheus (앱 포트의 `/actuator/prometheus`, 관리 포트를 따로 두지 않는다. 모든 서비스가 8080) · Micrometer Tracing → Zipkin · JSON 로그(traceId 포함) → Alloy → Loki ([gitops/platform/observability](https://github.com/sesac-freshlink/gitops/tree/main/platform/observability)) |
 | DB | RDS `freshlink-mysql`의 `member` 스키마 (DB 사용자 `member_app`) |
 | 배포 | GitHub Actions → ECR `freshlink/member-service` → ArgoCD → EKS |
@@ -43,7 +43,7 @@ sequenceDiagram
 | ID | 기능 | API | 완료 기준 |
 | --- | --- | --- | --- |
 | C-01 (MB-01) | 닉네임 중복 확인 | `GET /members/nickname-availability?nickname=` (공개) | 앞뒤 공백 제거 + 영문 소문자로 비교한다. 형식(2~10자, 한글·영문·숫자)이 틀리면 400 |
-| C-01 (MB-02) | 고객 프로필 등록 | `POST /members/me` (CUSTOMER) | 이름·닉네임·지역을 `sub` 기준으로 저장한다. 새로 저장 201, 같은 `sub`로 다시 부르면 기존 프로필 200, 대소문자만 다른 닉네임은 409 `NICKNAME_DUPLICATED` |
+| C-01 (MB-02) | 고객 프로필 등록 | `POST /members/me` (CUSTOMER) | 이름·닉네임·지역을 `sub` 기준으로 저장한다. 새로 저장 201, 같은 `sub`로 다시 부르면 기존 프로필 200, 대소문자만 다른 닉네임은 409 `NICKNAME_DUPLICATED`, 구글 로그인 계정인데 같은 이메일로 이미 이메일 가입한 계정이 있으면 409 `EMAIL_SIGNUP_EXISTS` |
 | C-01 (MB-03) | 내 정보 조회 | `GET /members/me` (CUSTOMER·OWNER) | 고객은 이름·닉네임·지역, 점주는 이메일·점포(점포 ID·코드·이름)·지역. 프로필이 없으면 404 `MEMBER_PROFILE_NOT_FOUND` |
 | C-02 | 로그인·로그아웃 | 없음 (프론트가 Cognito와 직접) | 이 서비스에는 로그인 API가 없다. 프론트가 Amplify `signIn`·`signOut`으로 처리한다 |
 | A-01 (AD-01) | 점포·점주 등록 | `POST /admin/stores` (ADMIN) | 점포명·주소·시도·점주 이메일·초기 비밀번호로 등록하면 201, 점포는 `ACTIVE`, 점주는 OWNER 그룹·이메일 인증 완료·`custom:storeId`(= 점포 ID)·영구 비밀번호인 Cognito 계정. 점포명 중복(등록 중 포함) 409 `STORE_NAME_DUPLICATED`, Cognito에 같은 이메일(미인증 포함) 409 `OWNER_EMAIL_DUPLICATED`, 중간 실패 500 `STORE_REGISTRATION_FAILED`(이번 요청이 만든 계정·점포는 지운다) |
@@ -58,7 +58,8 @@ API 문서는 Swagger(springdoc)로 자동 생성한다. 프론트는 이 문서
 
 ### Cognito와 이어지는 부분
 
-- 고객 계정: 화면이 Amplify로 Cognito에 직접 가입한다. CUSTOMER 그룹은 가입 확인 Lambda 트리거가 넣는다(이메일 인증 확인 때만, 화면이 OWNER·ADMIN을 요청해도 CUSTOMER만). 이 서비스는 로그인 뒤 프로필(MB-02)만 저장한다.
+- 고객 계정: 화면이 gateway `/api/auth/*`(BFF)를 거쳐 Cognito에 가입한다. CUSTOMER 그룹은 가입 확인 Lambda 트리거가 넣는다(이메일 인증 확인 때만, 화면이 OWNER·ADMIN을 요청해도 CUSTOMER만). 이 서비스는 로그인 뒤 프로필(MB-02)만 저장한다.
+- 구글 로그인 계정(2026-10-29): 같은 이메일로 이메일 가입과 구글 로그인을 하면 Cognito에는 사용자가 둘 생긴다. 한 사람이 계정 두 개를 갖지 않도록 MB-02에서 막는다. `ListUsers`로 `sub`의 사용자를 찾아 상태가 `EXTERNAL_PROVIDER`(구글)이면, 같은 이메일의 다른 사용자 중 `EXTERNAL_PROVIDER`가 아닌 계정이 있는지 본다. 있으면 409 `EMAIL_SIGNUP_EXISTS`이고 화면은 로그아웃한 뒤 이메일로 로그인하라고 안내한다. 이메일 가입 계정이나 User Pool ID가 없는 PC 실행은 그대로 통과한다(`domain/auth/CognitoSocialAccounts`).
 - 점주 계정(AD-01): 관리자가 만든 계정은 가입 확인 Lambda를 거치지 않으므로 이 서비스가 만든다. 사용자 이름 = 이메일, `email_verified=true`, `custom:storeId` = 점포 ID(생성 때 같이 넣는다), 초대 메일 없음, 영구 비밀번호, OWNER 그룹. 중간에 실패하면 이번 요청이 만든 계정을 지운다. 점포 ID를 바꾸는 기능은 아직 없다(만들면 `AdminUpdateUserAttributes`를 쓴다).
 - Cognito 관리자 권한은 IRSA Role로 이 User Pool에만 준다. `COGNITO_USER_POOL_ID`·`AWS_REGION`은 배포 설정(infra)이 넣는다.
 - 더미 점주 3명은 시드 스크립트가 Cognito와 이 DB에 같이 넣는다 (E-12).
