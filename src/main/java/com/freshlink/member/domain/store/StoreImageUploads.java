@@ -1,10 +1,14 @@
 package com.freshlink.member.domain.store;
 
+import com.freshlink.common.error.BusinessException;
+import com.freshlink.member.common.error.MemberErrorCode;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -20,6 +24,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
  */
 @Component
 public class StoreImageUploads {
+
+    private static final Logger log = LoggerFactory.getLogger(StoreImageUploads.class);
 
     static final String CONTENT_TYPE = "image/jpeg";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -40,8 +46,9 @@ public class StoreImageUploads {
     /** 그 점포의 새 이미지 키와 업로드 주소 */
     public UploadUrl issue(Long storeId) {
         if (bucket == null || bucket.isBlank()) {
-            // 부르기 전에 알 수 있는 설정 오류다 (STORE_IMAGE_BUCKET은 11/2 클러스터부터 들어간다)
-            throw new IllegalStateException("STORE_IMAGE_BUCKET이 설정되지 않아 이미지 업로드 주소를 만들지 않는다: storeId=" + storeId);
+            // 부르기 전에 알 수 있는 설정 오류다 (STORE_IMAGE_BUCKET은 11/2 클러스터부터 들어간다). 개발자가 볼 수 있게 남긴다
+            log.error("STORE_IMAGE_BUCKET이 설정되지 않아 이미지 업로드 주소를 만들지 않는다 storeId={}", storeId);
+            throw new BusinessException(MemberErrorCode.STORE_IMAGE_NOT_CONFIGURED);
         }
         String key = keyPrefix(storeId) + UUID.randomUUID() + ".jpg";
         PutObjectRequest put = PutObjectRequest.builder().bucket(bucket).key(key).contentType(CONTENT_TYPE).build();

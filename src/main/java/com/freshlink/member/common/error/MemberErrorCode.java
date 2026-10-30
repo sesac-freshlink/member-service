@@ -18,7 +18,8 @@ public enum MemberErrorCode implements ErrorCode {
     STORE_NAME_DUPLICATED(409, "이미 있는 점포명입니다"),
     STORE_IMAGE_KEY_INVALID(400, "이 점포에 발급한 이미지 키가 아닙니다"),
     OWNER_EMAIL_DUPLICATED(409, "이미 등록된 이메일입니다"),
-    STORE_REGISTRATION_FAILED(500, "점포 등록에 실패했습니다. 다시 시도해 주세요");
+    STORE_REGISTRATION_FAILED(500, "점포 등록에 실패했습니다. 다시 시도해 주세요"),
+    STORE_IMAGE_NOT_CONFIGURED(500, "점포 이미지를 지금 올릴 수 없습니다. 잠시 후 다시 시도해 주세요");
 
     private final int status;
     private final String message;
