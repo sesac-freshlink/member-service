@@ -36,7 +36,7 @@ sequenceDiagram
 
 **토큰 발급은 Amazon Cognito, 토큰 검증은 [gateway](https://github.com/sesac-freshlink/gateway)** 가 한다. 이 서비스는 gateway가 붙여 준 `X-User-Id`(= Cognito `sub`, UUID 문자열)만 믿고 쓴다.
 
-> **변경 (2026-10-13):** 처음에는 이 서비스가 비밀번호 해시를 저장하고 HS256 JWT를 발급하기로 했으나, Amazon Cognito로 옮겼다. 로그인 API, 비밀번호 칸, JWT 발급 코드, 공유 서명 키가 모두 빠진다. AD-01 점주 초기 비밀번호만 요청으로 받아 Cognito에 넘기고 DB·로그에 남기지 않는다. 이유는 [infra/docs/기술스택과 선택이유.md](https://github.com/sesac-freshlink/infra/blob/main/docs/기술스택과%20선택이유.md) 3-7.
+> **변경 (2026-10-13):** 처음에는 이 서비스가 비밀번호 해시를 저장하고 HS256 JWT를 발급하기로 했으나, Amazon Cognito로 옮겼다. 로그인 API, 비밀번호 칸, JWT 발급 코드, 공유 서명 키가 모두 빠진다. AD-01 점주 초기 비밀번호만 요청으로 받아 Cognito에 넘기고 DB·로그에 남기지 않는다. 이유는 [.github docs/기획/기술스택과-선택이유.md](https://github.com/sesac-freshlink/.github/blob/main/docs/기획/기술스택과-선택이유.md) 3-7.
 
 ## 3. API
 
@@ -106,7 +106,7 @@ member-service/
 
 ## 5-1. 오류 처리
 
-규칙은 .github 레포 `docs/백엔드-공통-규칙.md` 6장. 응답 모양은 common 라이브러리, 오류 목록과 핸들러는 이 레포에 있다.
+규칙은 .github 레포 `docs/규칙/백엔드-공통-규칙.md` 6장. 응답 모양은 common 라이브러리, 오류 목록과 핸들러는 이 레포에 있다.
 
 | 할 일 | 방법 |
 | --- | --- |
@@ -118,7 +118,7 @@ member-service/
 
 > **DB 없이 IntelliJ에서 띄우기:** Docker Desktop을 켜고 `src/test/java/com/freshlink/member/TestMemberServiceApplication`을 Run 한다. DB를 따로 띄우지 않아도 MySQL 8.4 이미지를 받아 컨테이너로 띄우고 자동으로 붙는다 (Testcontainers 라이브러리 기능). main 소스 변경사항이 그대로 반영된다. RDS가 준비되면 아래처럼 `DB_URL` 환경 변수만 주고 `MemberServiceApplication`으로 실행한다.
 
-개발할 때도 AWS dev 환경의 RDS·SQS·Cognito를 그대로 쓴다. AWS 로그인, DB 포트 포워딩(SSM), 개인 큐 설정은 [개발 환경 접속 가이드](https://github.com/sesac-freshlink/.github/blob/main/docs/개발환경-접속.md)를 따른다.
+개발할 때도 AWS dev 환경의 RDS·SQS·Cognito를 그대로 쓴다. AWS 로그인, DB 포트 포워딩(SSM), 개인 큐 설정은 [개발 환경 접속 가이드](https://github.com/sesac-freshlink/.github/blob/main/docs/팀원-가이드/0-개발환경-접속.md)를 따른다.
 
 ```bash
 export SPRING_PROFILES_ACTIVE=dev
