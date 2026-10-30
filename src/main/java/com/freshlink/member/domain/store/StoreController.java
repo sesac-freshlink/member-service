@@ -3,11 +3,12 @@ package com.freshlink.member.domain.store;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 고객 점포 검색. 공개 API (gateway가 토큰 없이 통과시킨다) */
+/** 고객 점포 검색·점포 상세. 공개 API (gateway가 토큰 없이 통과시킨다) */
 @RestController
 @RequestMapping("/stores")
 public class StoreController {
@@ -27,5 +28,11 @@ public class StoreController {
             @RequestParam(required = false, defaultValue = "SEOUL") Region region,
             @RequestParam(required = false) @Pattern(regexp = KEYWORD_REGEX, message = "앞뒤 공백을 빼고 50자 이하") String keyword) {
         return storeService.search(region, keyword).stream().map(StoreSearchResponse::from).toList();
+    }
+
+    /** 점포 상세 (공개): 운영 중인 점포의 이름·주소·지도 좌표·설명·이미지. 없으면 404 STORE_NOT_FOUND */
+    @GetMapping("/{storeId}")
+    public StoreDetailResponse detail(@PathVariable Long storeId) {
+        return StoreDetailResponse.from(storeService.detail(storeId));
     }
 }
