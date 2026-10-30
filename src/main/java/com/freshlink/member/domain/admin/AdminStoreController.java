@@ -3,6 +3,7 @@ package com.freshlink.member.domain.admin;
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
+import com.freshlink.member.domain.store.StoreImageUploads;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,18 @@ public class AdminStoreController {
             @Valid @RequestBody AdminStoreUpdateRequest request) {
         requireAdmin(role);
         return adminStoreService.update(storeId, request);
+    }
+
+    /**
+     * 점포 이미지 업로드 주소 발급 (presigned PUT 5분, Content-Type image/jpeg 고정).
+     * 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다
+     */
+    @PostMapping("/{storeId}/image-upload-url")
+    public StoreImageUploads.UploadUrl imageUploadUrl(
+            @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
+            @PathVariable Long storeId) {
+        requireAdmin(role);
+        return adminStoreService.imageUploadUrl(storeId);
     }
 
     private static void requireAdmin(String role) {
