@@ -74,8 +74,14 @@ class StoreDetailIntegrationTest {
     }
 
     private ResultActions uploadUrl(String role, long storeId) throws Exception {
+        return uploadUrl(role, storeId, null);
+    }
+
+    /** body가 null이면 본문 없이 보낸다 (예전 화면) */
+    private ResultActions uploadUrl(String role, long storeId, String body) throws Exception {
         var req = post("/admin/stores/" + storeId + "/image-upload-url").header("X-User-Id", UUID.randomUUID().toString());
         if (role != null) req.header("X-User-Role", role);
+        if (body != null) req.contentType(MediaType.APPLICATION_JSON).content(body);
         return mockMvc.perform(req);
     }
 
@@ -130,7 +136,7 @@ class StoreDetailIntegrationTest {
         long id = store("ACTIVE");
 
         for (String key : new String[]{"images/stores/" + (id + 1) + "/" + UUID.randomUUID() + ".jpg",
-                "images/stores/" + id + "/../other.jpg", "images/stores/" + id + "/" + UUID.randomUUID() + ".png"}) {
+                "images/stores/" + id + "/../other.jpg", "images/stores/" + id + "/" + UUID.randomUUID() + ".gif"}) {
             adminPatch(id, "{\"imageKey\":\"" + key + "\"}")
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("STORE_IMAGE_KEY_INVALID"));
@@ -152,7 +158,7 @@ class StoreDetailIntegrationTest {
     // ---------------------------------------------------------------- 이미지 업로드 주소
 
     @Test
-    void 업로드_주소는_이_점포_키로_5분_PUT_서명이고_Content_Type이_고정된다() throws Exception {
+    void 본문_없이_부르면_예전처럼_jpg_키로_5분_PUT_서명이고_Content_Type이_들어간다() throws Exception {
         long id = store("ACTIVE");
 
         String body = uploadUrl("ADMIN", id).andExpect(status().isOk())
@@ -170,6 +176,35 @@ class StoreDetailIntegrationTest {
         assertThat(uri.getQuery()).contains("X-Amz-Expires=300").contains("content-type");
         // 발급한 키는 그대로 점포 수정에 넣을 수 있다
         adminPatch(id, "{\"imageKey\":\"" + key + "\"}").andExpect(status().isOk());
+    }
+
+    @Test
+    void PNG를_고르면_png_키로_image_png_서명이고_점포_수정에_넣을_수_있다() throws Exception {
+        long id = store("ACTIVE");
+
+        String body = uploadUrl("ADMIN", id, "{\"contentType\":\"image/png\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageKey").value(matchesPattern(
+                        "images/stores/" + id + "/[0-9a-f-]{36}\\.png")))
+                .andExpect(jsonPath("$.contentType").value("image/png"))
+                .andExpect(jsonPath("$.imageUrl").value(matchesPattern("/images/stores/" + id + "/.*\\.png")))
+                .andReturn().getResponse().getContentAsString();
+
+        String key = com.jayway.jsonpath.JsonPath.read(body, "$.imageKey");
+        adminPatch(id, "{\"imageKey\":\"" + key + "\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("/" + key));
+    }
+
+    @Test
+    void JPG를_고르거나_형식을_안_보내면_jpg이고_다른_형식은_400_STORE_IMAGE_TYPE_INVALID() throws Exception {
+        long id = store("ACTIVE");
+
+        uploadUrl("ADMIN", id, "{\"contentType\":\"image/jpeg\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.contentType").value("image/jpeg"))
+                .andExpect(jsonPath("$.imageKey").value(matchesPattern(".*\\.jpg")));
+        uploadUrl("ADMIN", id, "{}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.contentType").value("image/jpeg"));
+        uploadUrl("ADMIN", id, "{\"contentType\":\"image/gif\"}").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("STORE_IMAGE_TYPE_INVALID"));
     }
 
     @Test
