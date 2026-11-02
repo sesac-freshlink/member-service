@@ -61,15 +61,16 @@ public class AdminStoreController {
     }
 
     /**
-     * 점포 이미지 업로드 주소 발급 (presigned PUT 5분, Content-Type image/jpeg 고정).
-     * 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다
+     * 점포 이미지 업로드 주소 발급 (presigned PUT 5분). 본문 {"contentType": "image/jpeg" | "image/png"}이고,
+     * 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다
      */
     @PostMapping("/{storeId}/image-upload-url")
     public StoreImageUploads.UploadUrl imageUploadUrl(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
-            @PathVariable Long storeId) {
+            @PathVariable Long storeId,
+            @RequestBody(required = false) StoreImageUploadUrlRequest request) {
         requireAdmin(role);
-        return adminStoreService.imageUploadUrl(storeId);
+        return adminStoreService.imageUploadUrl(storeId, request == null ? null : request.contentType());
     }
 
     private static void requireAdmin(String role) {

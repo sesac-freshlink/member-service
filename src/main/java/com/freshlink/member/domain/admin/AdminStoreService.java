@@ -78,16 +78,16 @@ public class AdminStoreService {
         }
     }
 
-    /** 점포 이미지 업로드 주소 발급: 없으면 404, 등록 중이면 409 (점포 수정과 같은 조건) */
+    /** 점포 이미지 업로드 주소 발급: 없으면 404, 등록 중이면 409 (점포 수정과 같은 조건), JPG·PNG가 아니면 400 */
     @Transactional(readOnly = true)
-    public StoreImageUploads.UploadUrl imageUploadUrl(Long storeId) {
+    public StoreImageUploads.UploadUrl imageUploadUrl(Long storeId, String contentType) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.STORE_NOT_FOUND));
         if (store.getStatus() == StoreStatus.PENDING) {
             throw new BusinessException(MemberErrorCode.STORE_NOT_EDITABLE);
         }
-        StoreImageUploads.UploadUrl url = storeImageUploads.issue(storeId);
-        log.info("점포 이미지 업로드 주소 발급 storeId={} key={}", storeId, url.imageKey());
+        StoreImageUploads.UploadUrl url = storeImageUploads.issue(storeId, contentType);
+        log.info("점포 이미지 업로드 주소 발급 storeId={} key={} contentType={}", storeId, url.imageKey(), url.contentType());
         return url;
     }
 
