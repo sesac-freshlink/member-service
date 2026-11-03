@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.member;
 
 import com.freshlink.common.error.BusinessException;
+import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.Region;
 import com.freshlink.member.domain.store.StoreRepository;
 import java.util.Optional;
@@ -14,6 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** MB-02 동시 요청의 끼어드는 순서를 목으로 고정해 확인한다 (통합 테스트는 순서가 매번 달라 재현이 안 될 수 있다) */
@@ -22,8 +25,9 @@ class MemberServiceTest {
     private static final String SUB = "11111111-1111-1111-1111-111111111111";
 
     MemberRepository members = mock(MemberRepository.class);
+    SocialAccounts socialAccounts = mock(SocialAccounts.class);
     MemberService service = new MemberService(members, mock(StoreRepository.class),
-            new TransactionTemplate(mock(PlatformTransactionManager.class)));
+            new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts);
     ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL);
     Member existing = Member.customer(SUB, "김경우", "Fresh01", Region.SEOUL);
 
@@ -83,5 +87,23 @@ class MemberServiceTest {
         when(members.saveAndFlush(any(Member.class))).thenThrow(deadlock);
 
         assertThatThrownBy(() -> service.register(SUB, req)).isSameAs(deadlock);
+    }
+
+    @Test
+    void 구글로_처음_들어온_계정인데_같은_이메일_가입_계정이_있으면_409_저장하지_않는다() {
+        when(members.findById(SUB)).thenReturn(Optional.empty());
+        when(socialAccounts.emailSignupExistsFor(SUB)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.register(SUB, req)).isInstanceOfSatisfying(BusinessException.class,
+                e -> assertThat(e.code()).isEqualTo("EMAIL_SIGNUP_EXISTS"));
+        verify(members, never()).saveAndFlush(any(Member.class));
+    }
+
+    @Test
+    void 이미_프로필이_있으면_구글_이메일_확인을_하지_않는다() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+
+        assertThat(service.register(SUB, req).created()).isFalse();
+        verify(socialAccounts, never()).emailSignupExistsFor(SUB);
     }
 }

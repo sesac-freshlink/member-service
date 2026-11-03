@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -36,6 +37,21 @@ public class Store {
     @Enumerated(EnumType.STRING)
     @Column(name = "region", nullable = false, length = 20)
     private Region region;
+
+    /** 점포 상세 지도 좌표 (V2). 비어 있어도 된다 */
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(name = "longitude", precision = 9, scale = 6)
+    private BigDecimal longitude;
+
+    /** 점포 상세 설명 (V2) */
+    @Column(name = "description", length = 500)
+    private String description;
+
+    /** 점포 이미지 S3 키 images/stores/{storeId}/{uuid}.jpg (V2) */
+    @Column(name = "image_key", length = 255)
+    private String imageKey;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -95,11 +111,36 @@ public class Store {
         }
     }
 
+    /** AD-03 점포 상세 값: 보낸 값만 바꾼다 (좌표·설명·이미지 키) */
+    public void updateDetail(BigDecimal latitude, BigDecimal longitude, String description, String imageKey) {
+        if (latitude != null) {
+            this.latitude = latitude;
+        }
+        if (longitude != null) {
+            this.longitude = longitude;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (imageKey != null) {
+            this.imageKey = imageKey;
+        }
+    }
+
+    /** 화면이 읽는 이미지 주소. 이미지는 프론트와 같은 주소(CloudFront)의 /images/...에 있다. 없으면 null */
+    public String imageUrl() {
+        return imageKey == null ? null : "/" + imageKey;
+    }
+
     public Long getId() { return id; }
     public String getStoreCode() { return storeCode; }
     public String getName() { return name; }
     public String getAddress() { return address; }
     public Region getRegion() { return region; }
+    public BigDecimal getLatitude() { return latitude; }
+    public BigDecimal getLongitude() { return longitude; }
+    public String getDescription() { return description; }
+    public String getImageKey() { return imageKey; }
     public StoreStatus getStatus() { return status; }
     public String getOwnerMemberId() { return ownerMemberId; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

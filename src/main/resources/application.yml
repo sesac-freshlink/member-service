@@ -8,6 +8,10 @@ app:
     # AD-01 점주 계정 생성. User Pool ID는 인프라가 클러스터 공통 환경 변수로 넣는다
     user-pool-id: ${COGNITO_USER_POOL_ID:}
     region: ${AWS_REGION:ap-northeast-2}
+  store-image:
+    # 점포 이미지는 프론트 버킷 안 images/stores/ 아래에 둔다. 버킷 이름은 인프라가 STORE_IMAGE_BUCKET으로 넣는다 (11/2 클러스터부터)
+    bucket: ${STORE_IMAGE_BUCKET:}
+    upload-ttl: 5m
 
 spring:
   application:

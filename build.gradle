@@ -40,6 +40,7 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:4.2.0')   // AWS SDK 버전 관리 (order-service와 같은 BOM)
     implementation 'software.amazon.awssdk:cognitoidentityprovider'           // AD-01 점주 Cognito 계정 생성 (AdminCreateUser 등)
+    implementation 'software.amazon.awssdk:s3'                                  // 점포 이미지 presigned PUT 주소 발급 (S3Presigner)
     runtimeOnly 'software.amazon.awssdk:sts'                                    // IRSA(웹 아이덴티티 토큰)로 AWS 자격을 받는 데 필요
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'

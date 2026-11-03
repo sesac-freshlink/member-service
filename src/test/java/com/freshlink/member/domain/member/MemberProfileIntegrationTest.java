@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.member;
 
 import com.freshlink.member.TestcontainersConfiguration;
+import com.freshlink.member.domain.auth.SocialAccounts;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +35,9 @@ class MemberProfileIntegrationTest {
     MockMvc mockMvc;
     @Autowired
     JdbcTemplate jdbc;
+    /** 기본은 false(구글 중복 아님). 실제 Cognito에 접속하지 않는다 */
+    @MockitoBean
+    SocialAccounts socialAccounts;
 
     private String sub() {
         return UUID.randomUUID().toString();
@@ -60,6 +65,19 @@ class MemberProfileIntegrationTest {
 
     private ResultActions availability(String nickname) throws Exception {
         return mockMvc.perform(get("/members/nickname-availability").param("nickname", nickname));
+    }
+
+    // ---------------------------------------------------------------- C-01 구글 같은 이메일 막기
+
+    @Test
+    void 구글로_처음_들어온_계정과_같은_이메일_가입_계정이_있으면_409_EMAIL_SIGNUP_EXISTS() throws Exception {
+        String sub = sub();
+        org.mockito.Mockito.when(socialAccounts.emailSignupExistsFor(sub)).thenReturn(true);
+
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EMAIL_SIGNUP_EXISTS"))
+                .andExpect(jsonPath("$.message").value("이미 이메일로 가입한 계정이 있습니다. 이메일로 로그인해 주세요"));
+        me(sub, "CUSTOMER").andExpect(status().isNotFound());
     }
 
     // ---------------------------------------------------------------- MB-01
