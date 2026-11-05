@@ -98,6 +98,20 @@ public class Member implements Persistable<String> {
         return m;
     }
 
+    /** MB-04 고객 회원정보 수정: null이 아닌 칸만 바꾼다. 닉네임을 바꾸면 비교값도 같이 바꾼다 */
+    public void updateProfile(String name, String nickname, Region region) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nickname != null) {
+            this.nickname = nickname;
+            this.nicknameNormalized = normalizeNickname(nickname);
+        }
+        if (region != null) {
+            this.region = region;
+        }
+    }
+
     /** 닉네임 비교값: 앞뒤 공백 제거 + 영문 소문자 (Fresh01 = fresh01) */
     public static String normalizeNickname(String nickname) {
         return nickname.trim().toLowerCase(Locale.ROOT);
