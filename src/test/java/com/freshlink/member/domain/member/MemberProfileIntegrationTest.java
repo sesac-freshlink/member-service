@@ -115,16 +115,26 @@ class MemberProfileIntegrationTest {
         }
         String sub = sub();
         register(sub, "CUSTOMER", "{\"name\":\"김경우\",\"nickname\":\"" + nick() + "\",\"region\":\"SEOUL\"}")
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("필수 약관에 동의해 주세요")));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member WHERE id = ?", Integer.class, sub)).isZero();
     }
 
     @Test
     void 이미_프로필이_있으면_200이고_동의_칸을_덮어쓰지_않는다() throws Exception {
         String sub = sub();
         register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
-        jdbc.update("UPDATE member SET terms_version = 'old', terms_agreed_at = '2026-01-01 00:00:00' WHERE id = ?", sub);
+        jdbc.update("UPDATE member SET terms_version = 'old-t', terms_agreed_at = '2026-01-01 00:00:00', "
+                + "privacy_version = 'old-p', privacy_agreed_at = '2026-01-02 00:00:00' WHERE id = ?", sub);
+        var before = jdbc.queryForMap("SELECT terms_version, terms_agreed_at, privacy_version, privacy_agreed_at "
+                + "FROM member WHERE id = ?", sub);
         register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isOk());
-        assertThat(jdbc.queryForObject("SELECT terms_version FROM member WHERE id = ?", String.class, sub)).isEqualTo("old");
+        var after = jdbc.queryForMap("SELECT terms_version, terms_agreed_at, privacy_version, privacy_agreed_at "
+                + "FROM member WHERE id = ?", sub);
+        assertThat(after).isEqualTo(before);
+        assertThat(after.get("terms_version")).isEqualTo("old-t");
+        assertThat(after.get("privacy_version")).isEqualTo("old-p");
     }
 
     @Test
@@ -133,7 +143,10 @@ class MemberProfileIntegrationTest {
         register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
         me(sub, "CUSTOMER").andExpect(status().isOk())
                 .andExpect(jsonPath("$.termsVersion").doesNotExist())
-                .andExpect(jsonPath("$.termsAgreed").doesNotExist());
+                .andExpect(jsonPath("$.termsAgreed").doesNotExist())
+                .andExpect(jsonPath("$.termsAgreedAt").doesNotExist())
+                .andExpect(jsonPath("$.privacyVersion").doesNotExist())
+                .andExpect(jsonPath("$.privacyAgreedAt").doesNotExist());
     }
 
     // ---------------------------------------------------------------- C-01 구글 같은 이메일 막기
