@@ -24,7 +24,9 @@ public class WithdrawalController {
     public ResponseEntity<Void> withdraw(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
-        if (!AuthHeaders.hasRole(role, AuthHeaders.ROLE_CUSTOMER) || !AuthHeaders.validUserId(userId)) {
+        // 고객만. 점주·관리자 역할이 같이 있으면(점주 계정이 지워질 수 있다) 막는다
+        if (!AuthHeaders.hasRole(role, AuthHeaders.ROLE_CUSTOMER) || AuthHeaders.hasRole(role, AuthHeaders.ROLE_OWNER)
+                || AuthHeaders.hasRole(role, AuthHeaders.ROLE_ADMIN) || !AuthHeaders.validUserId(userId)) {
             throw new BusinessException(MemberErrorCode.FORBIDDEN);
         }
         withdrawalService.withdraw(userId);

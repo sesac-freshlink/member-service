@@ -1,5 +1,7 @@
 package com.freshlink.member.domain.auth;
 
+import com.freshlink.common.error.BusinessException;
+import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.domain.withdrawal.CustomerAccounts;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -30,9 +32,9 @@ public class CognitoCustomerAccounts implements CustomerAccounts {
     @Override
     public Optional<String> delete(String sub) {
         if (userPoolId == null || userPoolId.isBlank()) {
-            // PC 단독 실행(Cognito 없음)에서는 지울 계정이 없다. 클러스터에는 인프라가 값을 넣는다
-            log.warn("COGNITO_USER_POOL_ID가 없어 Cognito 계정 삭제를 건너뛴다 sub={}", sub);
-            return Optional.empty();
+            // 값이 빠진 채 건너뛰면 계정은 살아 있는데 프로필만 지워진다. 탈퇴를 실패(502)로 돌린다
+            log.error("COGNITO_USER_POOL_ID가 없어 Cognito 계정을 지울 수 없다 sub={}", sub);
+            throw new BusinessException(MemberErrorCode.WITHDRAWAL_FAILED);
         }
         Optional<UserType> user = client.listUsers(ListUsersRequest.builder()
                 .userPoolId(userPoolId)

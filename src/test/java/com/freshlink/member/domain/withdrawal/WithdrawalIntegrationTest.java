@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.withdrawal;
 
 import com.freshlink.member.TestcontainersConfiguration;
+import com.freshlink.member.domain.member.MemberRole;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -39,6 +40,8 @@ class WithdrawalIntegrationTest {
     JdbcTemplate jdbc;
     @Autowired
     WithdrawalService withdrawalService;
+    @Autowired
+    MemberWithdrawalRepository withdrawalRepository;
     @MockitoBean
     OrderActivity orderActivity;
     @MockitoBean
@@ -137,18 +140,64 @@ class WithdrawalIntegrationTest {
     }
 
     @Test
-    void 보관_기간_30일이_지난_탈퇴_이력만_지운다() {
+    void 보관_기간_30일_경계_앞뒤로_지난_이력만_지운다() {
         String old = UUID.randomUUID().toString();
         String recent = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.ofHours(9));
-        jdbc.update("INSERT INTO member_withdrawal (member_id, email, role, withdrawn_by, withdrawn_at) "
-                + "VALUES (?, 'a@test.com', 'CUSTOMER', 'SELF', ?)", old, now.minusDays(31).toLocalDateTime());
-        jdbc.update("INSERT INTO member_withdrawal (member_id, email, role, withdrawn_by, withdrawn_at) "
-                + "VALUES (?, 'a@test.com', 'CUSTOMER', 'SELF', ?)", recent, now.minusDays(29).toLocalDateTime());
+        // 실제 저장 경로(JPA)로 넣고, 30일에서 1시간씩 앞뒤라 시간대(9시간) 계산이 틀리면 결과가 바뀐다
+        withdrawalRepository.save(MemberWithdrawal.self(old, "a@test.com", MemberRole.CUSTOMER,
+                now.minusDays(30).minusHours(1)));
+        withdrawalRepository.save(MemberWithdrawal.self(recent, "a@test.com", MemberRole.CUSTOMER,
+                now.minusDays(30).plusHours(1)));
 
         withdrawalService.deleteExpiredHistory();
 
         assertThat(history(old)).isZero();
         assertThat(history(recent)).isOne();
+    }
+
+    @Test
+    void 진행_중_주문_수가_음수면_503이고_탈퇴하지_않는다() throws Exception {
+        String sub = customer(nick());
+        when(orderActivity.activeOrders(sub)).thenReturn(-1L);
+
+        withdraw(sub, "CUSTOMER").andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("WITHDRAWAL_CHECK_UNAVAILABLE"));
+        assertThat(members(sub)).isOne();
+        verify(customerAccounts, never()).delete(anyString());
+    }
+
+    @Test
+    void 점주_관리자_역할이_같이_있거나_DB_역할이_고객이_아니면_403이고_지우지_않는다() throws Exception {
+        String sub = customer(nick());
+        when(orderActivity.activeOrders(sub)).thenReturn(0L);
+
+        withdraw(sub, "CUSTOMER,OWNER").andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        withdraw(sub, "ADMIN,CUSTOMER").andExpect(status().isForbidden());
+
+        jdbc.update("UPDATE member SET role = 'OWNER' WHERE id = ?", sub);
+        withdraw(sub, "CUSTOMER").andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        assertThat(members(sub)).isOne();
+        verify(customerAccounts, never()).delete(anyString());
+    }
+
+    @Test
+    void 탈퇴한_회원_ID로_프로필을_다시_만들면_409() throws Exception {
+        String sub = customer(nick());
+        when(orderActivity.activeOrders(sub)).thenReturn(0L);
+        when(customerAccounts.delete(sub)).thenReturn(Optional.of("kim@test.com"));
+        withdraw(sub, "CUSTOMER").andExpect(status().isNoContent());
+
+        // 탈퇴 전에 받은 토큰이 아직 살아 있는 경우
+        mockMvc.perform(post("/members/me").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"김경우\",\"nickname\":\"" + nick() + "\",\"region\":\"BUSAN\","
+                                + "\"termsAgreed\":true,\"privacyAgreed\":true}")
+                        .header("X-User-Id", sub).header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("WITHDRAWN_MEMBER"));
+        assertThat(members(sub)).isZero();
     }
 }

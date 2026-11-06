@@ -4,6 +4,7 @@ import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.domain.member.Member;
 import com.freshlink.member.domain.member.MemberRepository;
+import com.freshlink.member.domain.member.MemberRole;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -19,8 +20,8 @@ import software.amazon.awssdk.core.exception.SdkException;
 /**
  * 고객 회원탈퇴 (추가 명세 A6·A7). 순서:
  * <ol>
- *   <li>프로필이 없으면 404</li>
- *   <li>order-service에 진행 중 주문을 묻는다. 있으면 409, 묻지 못하면 503(탈퇴하지 않는다)</li>
+ *   <li>프로필이 없으면 404, DB 역할이 고객이 아니면 403</li>
+ *   <li>order-service에 진행 중 주문을 묻는다. 있으면 409, 묻지 못하거나 수가 음수면 503(탈퇴하지 않는다)</li>
  *   <li>Cognito 계정을 지운다(다시 로그인할 수 없게 먼저). 실패하면 502, 아무것도 바뀌지 않는다</li>
  *   <li>한 트랜잭션에서 탈퇴 이력(이메일·역할·시각)을 남기고 프로필을 지운다. 거주 지역은 보관하지 않는다</li>
  * </ol>
@@ -55,11 +56,19 @@ public class WithdrawalService {
     public void withdraw(String memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_PROFILE_NOT_FOUND));
+        if (member.getRole() != MemberRole.CUSTOMER) {
+            throw new BusinessException(MemberErrorCode.FORBIDDEN);
+        }
         long active;
         try {
             active = orderActivity.activeOrders(memberId);
         } catch (RuntimeException e) {
             log.warn("탈퇴 전 진행 중 주문 확인 실패 memberId={} error={}", memberId, e.getClass().getSimpleName());
+            throw new BusinessException(MemberErrorCode.WITHDRAWAL_CHECK_UNAVAILABLE);
+        }
+        if (active < 0) {
+            // 진행 중 주문이 없다는 확인이 아니다. 묻지 못한 것과 같이 다룬다
+            log.warn("탈퇴 전 진행 중 주문 수가 음수 memberId={} activeOrders={}", memberId, active);
             throw new BusinessException(MemberErrorCode.WITHDRAWAL_CHECK_UNAVAILABLE);
         }
         if (active > 0) {

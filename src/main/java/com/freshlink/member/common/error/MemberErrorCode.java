@@ -13,6 +13,7 @@ public enum MemberErrorCode implements ErrorCode {
     MEMBER_PROFILE_NOT_FOUND(404, "회원 정보가 없습니다"),
     NICKNAME_DUPLICATED(409, "이미 사용 중인 닉네임입니다"),
     EMAIL_SIGNUP_EXISTS(409, "이미 이메일로 가입한 계정이 있습니다. 이메일로 로그인해 주세요"),
+    WITHDRAWN_MEMBER(409, "탈퇴한 계정입니다. 다시 가입해 주세요"),
     STORE_NOT_FOUND(404, "점포가 없습니다"),
     STORE_NOT_EDITABLE(409, "등록 중인 점포는 수정할 수 없습니다"),
     STORE_NAME_DUPLICATED(409, "이미 있는 점포명입니다"),
