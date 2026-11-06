@@ -15,7 +15,7 @@ public record FaqRequest(
 ) {
 
     public FaqRequest {
-        question = question == null ? null : question.trim();
+        question = question == null ? null : question.strip();
         answer = answer == null ? null : answer.strip();
     }
 

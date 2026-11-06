@@ -63,10 +63,11 @@ class BoardIntegrationTest {
 
     @Test
     void 고객은_ALL과_고객_공지만_점주는_ALL과_점주_공지만_고정_먼저_최신순() throws Exception {
+        // 고정 공지를 가장 먼저(가장 오래전에) 써서, 최신순만으로는 맨 위에 올 수 없게 한다
+        notice("고정 공지", "ALL", true);
         notice("모두 1", "ALL", false);
         notice("고객용", "CUSTOMER", false);
         notice("점주용", "OWNER", false);
-        notice("고정 공지", "ALL", true);
 
         as("CUSTOMER", get("/members/notices")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(3))
@@ -213,8 +214,28 @@ class BoardIntegrationTest {
 
     @Test
     void 본문의_태그는_그대로_글자로_저장하고_돌려준다() throws Exception {
-        long id = notice("<b>제목</b>", "ALL", false);
+        String body = as("ADMIN", post("/admin/notices").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"<b>제목</b>\",\"content\":\"<script>x</script> 본문\",\"audience\":\"ALL\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = json.readTree(body).get("noticeId").asLong();
         as("CUSTOMER", get("/members/notices/" + id)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("<b>제목</b>"));
+                .andExpect(jsonPath("$.title").value("<b>제목</b>"))
+                .andExpect(jsonPath("$.content").value("<script>x</script> 본문"));
+    }
+
+    @Test
+    void 제목_질문_앞뒤의_전각_공백은_지우고_길이를_센다() throws Exception {
+        String title = "가".repeat(100);
+        String body = as("ADMIN", post("/admin/notices").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"\u3000" + title + "\u2003\",\"content\":\"y\",\"audience\":\"ALL\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = json.readTree(body).get("noticeId").asLong();
+        as("CUSTOMER", get("/members/notices/" + id)).andExpect(jsonPath("$.title").value(title));
+
+        String question = "질".repeat(200);
+        as("ADMIN", post("/admin/faqs").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"\u2003" + question + "\u3000\",\"answer\":\"a\",\"audience\":\"ALL\",\"sortOrder\":1}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.question").value(question));
     }
 }
