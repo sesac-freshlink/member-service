@@ -25,7 +25,10 @@ public enum MemberErrorCode implements ErrorCode {
     // 회원탈퇴 (추가 명세 A6·A7)
     WITHDRAWAL_BLOCKED_ACTIVE_ORDER(409, "진행 중인 주문이 있어 탈퇴할 수 없습니다. 주문이 끝난 뒤 다시 시도해 주세요"),
     WITHDRAWAL_FAILED(502, "탈퇴를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요"),
-    WITHDRAWAL_CHECK_UNAVAILABLE(503, "지금은 주문 확인을 할 수 없어 탈퇴할 수 없습니다. 잠시 후 다시 시도해 주세요");
+    WITHDRAWAL_CHECK_UNAVAILABLE(503, "지금은 주문 확인을 할 수 없어 탈퇴할 수 없습니다. 잠시 후 다시 시도해 주세요"),
+    // 게시판 공지사항·FAQ (추가 명세 A17)
+    NOTICE_NOT_FOUND(404, "공지사항이 없습니다"),
+    FAQ_NOT_FOUND(404, "질문이 없습니다");
 
     private final int status;
     private final String message;
