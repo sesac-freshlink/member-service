@@ -4,6 +4,7 @@ import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.Region;
 import com.freshlink.member.domain.store.StoreRepository;
+import com.freshlink.member.domain.withdrawal.MemberWithdrawalRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.CannotAcquireLockException;
@@ -27,7 +28,8 @@ class MemberServiceTest {
     MemberRepository members = mock(MemberRepository.class);
     SocialAccounts socialAccounts = mock(SocialAccounts.class);
     MemberService service = new MemberService(members, mock(StoreRepository.class),
-            new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts);
+            new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts,
+            mock(MemberWithdrawalRepository.class));
     ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL, true, true);
     Member existing = Member.customer(SUB, "김경우", "Fresh01", Region.SEOUL);
 
