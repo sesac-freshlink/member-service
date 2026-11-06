@@ -7,6 +7,7 @@ import com.freshlink.member.domain.admin.PageResponse;
 import com.freshlink.member.domain.board.BoardResponses.FaqItem;
 import com.freshlink.member.domain.board.BoardResponses.NoticeDetail;
 import com.freshlink.member.domain.board.BoardResponses.NoticeSummary;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,8 @@ public class BoardController {
     /** BD-01 공지 목록 (고정 먼저, 최신순 20개씩) */
     @GetMapping("/notices")
     public PageResponse<NoticeSummary> notices(
-            @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다") int page,
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다")
+            @Max(value = BoardService.MAX_PAGE, message = "너무 큰 페이지입니다") int page,
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         return boardService.notices(isOwner(role), page);
     }

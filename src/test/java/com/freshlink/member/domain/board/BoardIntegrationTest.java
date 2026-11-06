@@ -157,4 +157,64 @@ class BoardIntegrationTest {
         as("ADMIN", get("/members/notices")).andExpect(status().isForbidden());
         mockMvc.perform(get("/members/faqs")).andExpect(status().isForbidden());
     }
+
+    @Test
+    void 없는_대상_값_긴_본문_음수_페이지_숫자가_아닌_ID는_400() throws Exception {
+        // 읽을 수 없는 본문(없는 enum 값)은 공통 처리기가 400 BAD_REQUEST로 준다
+        as("ADMIN", post("/admin/notices").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"x\",\"content\":\"y\",\"audience\":\"ADMIN\"}"))
+                .andExpect(status().isBadRequest());
+        as("ADMIN", post("/admin/notices").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"x\",\"content\":\"" + "가".repeat(5001) + "\",\"audience\":\"ALL\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        as("ADMIN", post("/admin/faqs").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"q\",\"answer\":\"a\",\"audience\":\"ALL\",\"sortOrder\":-1}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        as("CUSTOMER", get("/members/notices").param("page", "-1"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        as("ADMIN", get("/admin/notices").param("page", "-1"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        as("CUSTOMER", get("/members/notices/abc")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 상한_안의_큰_페이지는_빈_목록_상한을_넘으면_400() throws Exception {
+        notice("하나", "ALL", false);
+        as("CUSTOMER", get("/members/notices").param("page", String.valueOf(BoardService.MAX_PAGE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        as("CUSTOMER", get("/members/notices").param("page", String.valueOf(Integer.MAX_VALUE)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        as("ADMIN", get("/admin/notices").param("page", String.valueOf(Integer.MAX_VALUE)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 없는_글을_고치거나_관리자_상세로_보면_404() throws Exception {
+        as("ADMIN", put("/admin/notices/999999").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"x\",\"content\":\"y\",\"audience\":\"ALL\",\"pinned\":false}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
+        as("ADMIN", get("/admin/notices/999999"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
+        as("ADMIN", put("/admin/faqs/999999").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"q\",\"answer\":\"a\",\"audience\":\"ALL\",\"sortOrder\":1}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("FAQ_NOT_FOUND"));
+    }
+
+    @Test
+    void 관리자_API는_역할_머리글이_없거나_관리자가_아니면_403() throws Exception {
+        mockMvc.perform(get("/admin/notices")).andExpect(status().isForbidden());
+        as("CUSTOMER", get("/admin/faqs")).andExpect(status().isForbidden());
+        as("CUSTOMER", post("/admin/faqs").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"q\",\"answer\":\"a\",\"audience\":\"ALL\",\"sortOrder\":1}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 본문의_태그는_그대로_글자로_저장하고_돌려준다() throws Exception {
+        long id = notice("<b>제목</b>", "ALL", false);
+        as("CUSTOMER", get("/members/notices/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("<b>제목</b>"));
+    }
 }

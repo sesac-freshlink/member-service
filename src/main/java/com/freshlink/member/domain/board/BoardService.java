@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoardService {
 
     static final int PAGE_SIZE = 20;
+    /** 페이지 상한. 이보다 크면 DB 건너뛰기 수(page × 20)가 int를 넘어 500이 난다 */
+    static final int MAX_PAGE = 100_000;
     private static final Sort NOTICE_ORDER = Sort.by(Sort.Order.desc("pinned"), Sort.Order.desc("createdAt"),
             Sort.Order.desc("id"));
     private static final Logger log = LoggerFactory.getLogger(BoardService.class);

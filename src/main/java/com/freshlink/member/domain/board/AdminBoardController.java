@@ -8,6 +8,7 @@ import com.freshlink.member.domain.board.BoardResponses.FaqItem;
 import com.freshlink.member.domain.board.BoardResponses.NoticeDetail;
 import com.freshlink.member.domain.board.BoardResponses.NoticeSummary;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,8 @@ public class AdminBoardController {
     @GetMapping("/notices")
     public PageResponse<NoticeSummary> notices(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
-            @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다") int page) {
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다")
+            @Max(value = BoardService.MAX_PAGE, message = "너무 큰 페이지입니다") int page) {
         requireAdmin(role);
         return boardService.allNotices(page);
     }
