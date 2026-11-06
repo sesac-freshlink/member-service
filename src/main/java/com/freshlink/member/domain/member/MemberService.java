@@ -5,6 +5,8 @@ import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.error.UniqueKeys;
 import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.StoreRepository;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class MemberService {
 
     private static final Logger log = LoggerFactory.getLogger(MemberService.class);
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final MemberRepository memberRepository;
     private final StoreRepository storeRepository;
@@ -58,8 +61,9 @@ public class MemberService {
                     .orElseThrow(() -> new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED));
         }
         try {
-            Member saved = transactionTemplate.execute(s -> memberRepository.saveAndFlush(
-                    Member.customer(memberId, req.name(), req.nickname(), req.region())));
+            Member member = Member.customer(memberId, req.name(), req.nickname(), req.region());
+            member.agreeTerms(MemberRules.TERMS_VERSION, MemberRules.PRIVACY_VERSION, OffsetDateTime.now(KST));
+            Member saved = transactionTemplate.execute(s -> memberRepository.saveAndFlush(member));
             log.info("고객 프로필 등록 memberId={} region={}", memberId, req.region());
             return new RegisterResult(saved, true);
         } catch (DataIntegrityViolationException | ConcurrencyFailureException e) {

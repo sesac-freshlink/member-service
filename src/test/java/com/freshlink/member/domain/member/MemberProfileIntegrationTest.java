@@ -59,9 +59,15 @@ class MemberProfileIntegrationTest {
     }
 
     private String body(String name, String nickname, String region) {
+        return body(name, nickname, region, "true", "true");
+    }
+
+    /** 약관 동의 두 칸까지 (null이면 칸을 빼지 않고 null로 보낸다) */
+    private String body(String name, String nickname, String region, String terms, String privacy) {
         return "{\"name\":" + (name == null ? "null" : "\"" + name + "\"")
                 + ",\"nickname\":" + (nickname == null ? "null" : "\"" + nickname + "\"")
-                + ",\"region\":" + (region == null ? "null" : "\"" + region + "\"") + "}";
+                + ",\"region\":" + (region == null ? "null" : "\"" + region + "\"")
+                + ",\"termsAgreed\":" + terms + ",\"privacyAgreed\":" + privacy + "}";
     }
 
     private ResultActions register(String sub, String role, String body) throws Exception {
@@ -80,6 +86,54 @@ class MemberProfileIntegrationTest {
     private ResultActions update(String sub, String role, String body) throws Exception {
         return mockMvc.perform(patch("/members/me").contentType(MediaType.APPLICATION_JSON).content(body)
                 .header("X-User-Id", sub).header("X-User-Role", role));
+    }
+
+    // ---------------------------------------------------------------- A16 약관 동의
+
+    @Test
+    void 필수_약관_둘_다_동의해야_등록되고_버전과_시각이_남는다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        var row = jdbc.queryForMap("SELECT terms_version, terms_agreed_at, privacy_version, privacy_agreed_at "
+                + "FROM member WHERE id = ?", sub);
+        assertThat(row.get("terms_version")).isEqualTo("2026-11-06");
+        assertThat(row.get("privacy_version")).isEqualTo("2026-11-06");
+        assertThat(row.get("terms_agreed_at")).isNotNull();
+        assertThat(row.get("privacy_agreed_at")).isEqualTo(row.get("terms_agreed_at"));
+    }
+
+    @Test
+    void 약관_동의가_없거나_하나만이면_400_프로필을_만들지_않는다() throws Exception {
+        String[][] cases = {{"null", "null"}, {"false", "true"}, {"true", "false"}, {"false", "false"}};
+        for (String[] c : cases) {
+            String sub = sub();
+            register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL", c[0], c[1]))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("필수 약관에 동의해 주세요")));
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member WHERE id = ?", Integer.class, sub)).isZero();
+        }
+        String sub = sub();
+        register(sub, "CUSTOMER", "{\"name\":\"김경우\",\"nickname\":\"" + nick() + "\",\"region\":\"SEOUL\"}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 이미_프로필이_있으면_200이고_동의_칸을_덮어쓰지_않는다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        jdbc.update("UPDATE member SET terms_version = 'old', terms_agreed_at = '2026-01-01 00:00:00' WHERE id = ?", sub);
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT terms_version FROM member WHERE id = ?", String.class, sub)).isEqualTo("old");
+    }
+
+    @Test
+    void 내_정보_응답에는_동의_칸이_없다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        me(sub, "CUSTOMER").andExpect(status().isOk())
+                .andExpect(jsonPath("$.termsVersion").doesNotExist())
+                .andExpect(jsonPath("$.termsAgreed").doesNotExist());
     }
 
     // ---------------------------------------------------------------- C-01 구글 같은 이메일 막기
