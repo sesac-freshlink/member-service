@@ -12,4 +12,8 @@ public final class MemberRules {
 
     private MemberRules() {
     }
+
+    /** 지금 시행 중인 이용약관·개인정보 처리방침 버전 (추가 명세 A16, 화면 약관 글의 시행일과 같다) */
+    public static final String TERMS_VERSION = "2026-11-06";
+    public static final String PRIVACY_VERSION = "2026-11-06";
 }

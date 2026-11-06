@@ -53,6 +53,20 @@ public class Member implements Persistable<String> {
     @Column(name = "region", length = 20)
     private Region region;
 
+    /** 동의한 이용약관 버전 (V3, 추가 명세 A16). 11/6 전에 가입한 회원·점주는 NULL */
+    @Column(name = "terms_version", length = 10)
+    private String termsVersion;
+
+    @Column(name = "terms_agreed_at")
+    private OffsetDateTime termsAgreedAt;
+
+    /** 동의한 개인정보 처리방침 버전 (V3) */
+    @Column(name = "privacy_version", length = 10)
+    private String privacyVersion;
+
+    @Column(name = "privacy_agreed_at")
+    private OffsetDateTime privacyAgreedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -117,6 +131,14 @@ public class Member implements Persistable<String> {
         }
     }
 
+    /** A16 가입 때 필수 약관 동의를 남긴다 (버전과 시각) */
+    public void agreeTerms(String termsVersion, String privacyVersion, OffsetDateTime agreedAt) {
+        this.termsVersion = termsVersion;
+        this.termsAgreedAt = agreedAt;
+        this.privacyVersion = privacyVersion;
+        this.privacyAgreedAt = agreedAt;
+    }
+
     /** 닉네임 비교값: 앞뒤 공백 제거 + 영문 소문자 (Fresh01 = fresh01) */
     public static String normalizeNickname(String nickname) {
         return nickname.trim().toLowerCase(Locale.ROOT);
@@ -129,6 +151,10 @@ public class Member implements Persistable<String> {
     public String getNickname() { return nickname; }
     public String getNicknameNormalized() { return nicknameNormalized; }
     public Region getRegion() { return region; }
+    public String getTermsVersion() { return termsVersion; }
+    public OffsetDateTime getTermsAgreedAt() { return termsAgreedAt; }
+    public String getPrivacyVersion() { return privacyVersion; }
+    public OffsetDateTime getPrivacyAgreedAt() { return privacyAgreedAt; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

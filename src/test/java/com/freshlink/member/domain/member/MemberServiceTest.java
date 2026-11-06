@@ -28,7 +28,7 @@ class MemberServiceTest {
     SocialAccounts socialAccounts = mock(SocialAccounts.class);
     MemberService service = new MemberService(members, mock(StoreRepository.class),
             new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts);
-    ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL);
+    ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL, true, true);
     Member existing = Member.customer(SUB, "김경우", "Fresh01", Region.SEOUL);
 
     @Test
