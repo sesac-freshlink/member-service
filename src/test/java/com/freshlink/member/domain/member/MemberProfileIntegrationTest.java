@@ -17,6 +17,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.freshlink.member.domain.store.Region;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
@@ -39,6 +42,12 @@ class MemberProfileIntegrationTest {
     /** 기본은 false(구글 중복 아님). 실제 Cognito에 접속하지 않는다 */
     @MockitoBean
     SocialAccounts socialAccounts;
+    @Autowired
+    MemberService memberService;
+    @Autowired
+    MemberRepository memberRepository;
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     private String sub() {
         return UUID.randomUUID().toString();
@@ -328,6 +337,7 @@ class MemberProfileIntegrationTest {
                 .andExpect(jsonPath("$.region").value("JEJU"));
         update(sub, "CUSTOMER", "{\"name\":\"김경우님\"}").andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("김경우님"))
+                .andExpect(jsonPath("$.nickname").value(n))
                 .andExpect(jsonPath("$.region").value("JEJU"));
     }
 
@@ -400,5 +410,54 @@ class MemberProfileIntegrationTest {
 
         update(sub, "CUSTOMER", "{\"region\":\"BUSAN\",\"email\":\"x@test.com\"}").andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT email FROM member WHERE id = ?", String.class, sub)).isNull();
+    }
+
+    @Test
+    void 다른_회원들이_동시에_같은_새_닉네임으로_바꾸면_하나만_200이고_나머지는_409() throws Exception {
+        String[] subs = new String[4];
+        for (int i = 0; i < subs.length; i++) {
+            subs[i] = sub();
+            register(subs[i], "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        }
+        String n = nick();
+        ExecutorService pool = Executors.newFixedThreadPool(subs.length);
+        try {
+            java.util.List<Future<Integer>> results = new java.util.ArrayList<>();
+            for (String s : subs) {
+                results.add(pool.submit(() -> update(s, "CUSTOMER", "{\"nickname\":\"" + n + "\"}")
+                        .andReturn().getResponse().getStatus()));
+            }
+            java.util.List<Integer> codes = new java.util.ArrayList<>();
+            for (Future<Integer> f : results) codes.add(f.get());
+            assertThat(codes).as("응답 코드 %s", codes).containsOnlyOnce(200);
+            assertThat(codes).as("응답 코드 %s", codes).filteredOn(c -> c == 409).hasSize(subs.length - 1);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member WHERE nickname_normalized = ?", Integer.class, n))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void 지역만_바꾸는_수정은_그사이_바뀐_이름을_옛_값으로_덮지_않는다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
+            memberRepository.findById(sub).orElseThrow(); // 옛 값(김경우)을 먼저 읽어 둔다
+            // 다른 요청이 그사이 이름을 바꿔 커밋한 상황 (다른 연결)
+            ExecutorService other = Executors.newSingleThreadExecutor();
+            try {
+                other.submit(() -> jdbc.update("UPDATE member SET name = ? WHERE id = ?", "이태우", sub)).get();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            } finally {
+                other.shutdownNow();
+            }
+            memberService.updateProfile(sub, new ProfileUpdateRequest(null, null, Region.JEJU));
+        });
+
+        assertThat(jdbc.queryForObject("SELECT name FROM member WHERE id = ?", String.class, sub)).isEqualTo("이태우");
+        assertThat(jdbc.queryForObject("SELECT region FROM member WHERE id = ?", String.class, sub)).isEqualTo("JEJU");
     }
 }

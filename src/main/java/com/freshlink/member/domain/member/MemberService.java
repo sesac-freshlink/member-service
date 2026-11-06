@@ -89,7 +89,8 @@ public class MemberService {
 
     /**
      * MB-04 고객 회원정보 수정 (추가 명세 A3). 보낸 칸만 바꾼다. 닉네임 중복 검사에서 내 현재 닉네임은 뺀다.
-     * 두 사람이 동시에 같은 새 닉네임으로 바꾸면 DB UNIQUE가 막고 늦은 쪽은 500이 된다 (11/5 경우 결정: 그대로 둔다)
+     * 두 사람이 동시에 같은 새 닉네임으로 바꾸면 미리 검사를 둘 다 통과할 수 있다. 그래서 바로 저장해(saveAndFlush)
+     * 닉네임 UNIQUE 충돌이면 MB-02처럼 409로 바꾼다. 그 밖의 무결성 오류는 그대로 던진다
      */
     @Transactional
     public Member updateProfile(String memberId, ProfileUpdateRequest req) {
@@ -103,6 +104,14 @@ public class MemberService {
             throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
         }
         member.updateProfile(req.name(), req.nickname(), req.region());
+        try {
+            memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException e) {
+            if (UniqueKeys.isViolation(e, UniqueKeys.MEMBER_NICKNAME)) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
         log.info("고객 회원정보 수정 memberId={} name={} nickname={} region={}", memberId,
                 req.name() != null, req.nickname() != null, req.region() != null);
         return member;

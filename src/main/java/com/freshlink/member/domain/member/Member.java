@@ -13,13 +13,18 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-/** 회원 (표 member, V1). 키는 Cognito sub. 고객은 이름·닉네임·지역, 점주는 이메일만 (표시 이름은 점포명) */
+/**
+ * 회원 (표 member, V1). 키는 Cognito sub. 고객은 이름·닉네임·지역, 점주는 이메일만 (표시 이름은 점포명).
+ * 바뀐 칸만 UPDATE한다(@DynamicUpdate): 같은 회원의 MB-04 요청이 겹쳐도 보내지 않은 칸을 옛 값으로 덮지 않는다
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "member")
 @EntityListeners(AuditingEntityListener.class)
 public class Member implements Persistable<String> {

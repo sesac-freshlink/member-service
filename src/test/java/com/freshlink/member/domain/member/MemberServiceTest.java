@@ -132,6 +132,8 @@ class MemberServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("NICKNAME_DUPLICATED"));
         assertThat(existing.getName()).isEqualTo("김경우");
         assertThat(existing.getRegion()).isEqualTo(Region.SEOUL);
+        assertThat(existing.getNickname()).isEqualTo("Fresh01");
+        assertThat(existing.getNicknameNormalized()).isEqualTo("fresh01");
     }
 
     @Test
@@ -150,5 +152,24 @@ class MemberServiceTest {
 
         assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest(null, null, Region.JEJU)))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("FORBIDDEN"));
+    }
+
+    @Test
+    void 수정_저장_중_닉네임_UNIQUE_충돌이면_409() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.saveAndFlush(any(Member.class))).thenThrow(new DataIntegrityViolationException(
+                "Duplicate entry 'taken1' for key 'member.uk_member_nickname_normalized'"));
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest(null, "Taken1", null)))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("NICKNAME_DUPLICATED"));
+    }
+
+    @Test
+    void 수정_저장_중_닉네임_충돌이_아닌_무결성_오류는_그대로_던진다() {
+        DataIntegrityViolationException tooLong = new DataIntegrityViolationException("Data too long for column 'name'");
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.saveAndFlush(any(Member.class))).thenThrow(tooLong);
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest("이태우", null, null))).isSameAs(tooLong);
     }
 }
