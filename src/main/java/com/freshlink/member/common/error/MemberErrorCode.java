@@ -20,7 +20,11 @@ public enum MemberErrorCode implements ErrorCode {
     STORE_IMAGE_TYPE_INVALID(400, "점포 이미지는 JPG나 PNG만 올릴 수 있습니다"),
     OWNER_EMAIL_DUPLICATED(409, "이미 등록된 이메일입니다"),
     STORE_REGISTRATION_FAILED(500, "점포 등록에 실패했습니다. 다시 시도해 주세요"),
-    STORE_IMAGE_NOT_CONFIGURED(500, "점포 이미지를 지금 올릴 수 없습니다. 잠시 후 다시 시도해 주세요");
+    STORE_IMAGE_NOT_CONFIGURED(500, "점포 이미지를 지금 올릴 수 없습니다. 잠시 후 다시 시도해 주세요"),
+    // 회원탈퇴 (추가 명세 A6·A7)
+    WITHDRAWAL_BLOCKED_ACTIVE_ORDER(409, "진행 중인 주문이 있어 탈퇴할 수 없습니다. 주문이 끝난 뒤 다시 시도해 주세요"),
+    WITHDRAWAL_FAILED(502, "탈퇴를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요"),
+    WITHDRAWAL_CHECK_UNAVAILABLE(503, "지금은 주문 확인을 할 수 없어 탈퇴할 수 없습니다. 잠시 후 다시 시도해 주세요");
 
     private final int status;
     private final String message;

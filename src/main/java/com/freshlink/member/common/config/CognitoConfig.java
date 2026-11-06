@@ -1,9 +1,11 @@
 package com.freshlink.member.common.config;
 
+import com.freshlink.member.domain.auth.CognitoCustomerAccounts;
 import com.freshlink.member.domain.auth.CognitoOwnerAccounts;
 import com.freshlink.member.domain.auth.CognitoSocialAccounts;
 import com.freshlink.member.domain.auth.OwnerAccounts;
 import com.freshlink.member.domain.auth.SocialAccounts;
+import com.freshlink.member.domain.withdrawal.CustomerAccounts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +28,12 @@ public class CognitoConfig {
     public OwnerAccounts ownerAccounts(CognitoIdentityProviderClient client,
                                        @Value("${app.cognito.user-pool-id}") String userPoolId) {
         return new CognitoOwnerAccounts(client, userPoolId);
+    }
+
+    @Bean
+    public CustomerAccounts customerAccounts(CognitoIdentityProviderClient client,
+                                             @Value("${app.cognito.user-pool-id}") String userPoolId) {
+        return new CognitoCustomerAccounts(client, userPoolId);
     }
 
     @Bean
