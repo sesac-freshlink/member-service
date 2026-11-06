@@ -17,15 +17,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.freshlink.member.domain.store.Region;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** MB-01 닉네임 중복 확인, MB-02 고객 프로필 등록, MB-03 내 정보 조회를 실제 MySQL에서 확인한다. 점포는 점포 검색 테스트와 겹치지 않는 지역(CHUNGBUK)에 넣는다 */
+/** MB-01 닉네임 중복 확인, MB-02 고객 프로필 등록, MB-03 내 정보 조회, MB-04 회원정보 수정을 실제 MySQL에서 확인한다. 점포는 점포 검색 테스트와 겹치지 않는 지역(CHUNGBUK)에 넣는다 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -38,6 +42,12 @@ class MemberProfileIntegrationTest {
     /** 기본은 false(구글 중복 아님). 실제 Cognito에 접속하지 않는다 */
     @MockitoBean
     SocialAccounts socialAccounts;
+    @Autowired
+    MemberService memberService;
+    @Autowired
+    MemberRepository memberRepository;
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     private String sub() {
         return UUID.randomUUID().toString();
@@ -65,6 +75,11 @@ class MemberProfileIntegrationTest {
 
     private ResultActions availability(String nickname) throws Exception {
         return mockMvc.perform(get("/members/nickname-availability").param("nickname", nickname));
+    }
+
+    private ResultActions update(String sub, String role, String body) throws Exception {
+        return mockMvc.perform(patch("/members/me").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("X-User-Id", sub).header("X-User-Role", role));
     }
 
     // ---------------------------------------------------------------- C-01 구글 같은 이메일 막기
@@ -282,5 +297,167 @@ class MemberProfileIntegrationTest {
     void 관리자나_역할_없음은_403() throws Exception {
         me(sub(), "ADMIN").andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
         mockMvc.perform(get("/members/me").header("X-User-Id", sub())).andExpect(status().isForbidden());
+    }
+
+    // ---------------------------------------------------------------- MB-04
+
+    @Test
+    void 세_칸을_모두_바꾸면_200이고_닉네임_비교값도_바뀐다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        String created = jdbc.queryForObject("SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s.%f') FROM member WHERE id = ?",
+                String.class, sub);
+        String n = "N" + nick().substring(1);
+
+        update(sub, "CUSTOMER", body(" 이태우 ", n, "BUSAN")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(sub))
+                .andExpect(jsonPath("$.name").value("이태우"))
+                .andExpect(jsonPath("$.nickname").value(n))
+                .andExpect(jsonPath("$.region").value("BUSAN"))
+                .andExpect(jsonPath("$.createdAt").value(matchesPattern(".*\\+09:00$")));
+
+        assertThat(jdbc.queryForObject("SELECT nickname_normalized FROM member WHERE id = ?", String.class, sub))
+                .isEqualTo(n.toLowerCase());
+        assertThat(jdbc.queryForObject("SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s.%f') FROM member WHERE id = ?",
+                String.class, sub)).isEqualTo(created);
+        assertThat(jdbc.queryForObject("SELECT updated_at > created_at FROM member WHERE id = ?", Boolean.class, sub))
+                .isTrue();
+        me(sub, "CUSTOMER").andExpect(jsonPath("$.name").value("이태우")).andExpect(jsonPath("$.region").value("BUSAN"));
+    }
+
+    @Test
+    void 보낸_칸만_바뀌고_나머지는_그대로() throws Exception {
+        String sub = sub();
+        String n = nick();
+        register(sub, "CUSTOMER", body("김경우", n, "SEOUL")).andExpect(status().isCreated());
+
+        update(sub, "CUSTOMER", "{\"region\":\"JEJU\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("김경우"))
+                .andExpect(jsonPath("$.nickname").value(n))
+                .andExpect(jsonPath("$.region").value("JEJU"));
+        update(sub, "CUSTOMER", "{\"name\":\"김경우님\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("김경우님"))
+                .andExpect(jsonPath("$.nickname").value(n))
+                .andExpect(jsonPath("$.region").value("JEJU"));
+    }
+
+    @Test
+    void 대소문자만_바꾼_내_닉네임은_중복이_아니다() throws Exception {
+        String sub = sub();
+        String n = nick();
+        register(sub, "CUSTOMER", body("김경우", n, "SEOUL")).andExpect(status().isCreated());
+
+        update(sub, "CUSTOMER", "{\"nickname\":\"" + n.toUpperCase() + "\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value(n.toUpperCase()));
+    }
+
+    @Test
+    void 다른_회원_닉네임이면_409_NICKNAME_DUPLICATED() throws Exception {
+        String taken = nick();
+        register(sub(), "CUSTOMER", body("이태우", taken, "SEOUL")).andExpect(status().isCreated());
+        String sub = sub();
+        String mine = nick();
+        register(sub, "CUSTOMER", body("김경우", mine, "SEOUL")).andExpect(status().isCreated());
+
+        update(sub, "CUSTOMER", "{\"nickname\":\"" + taken.toUpperCase() + "\",\"region\":\"BUSAN\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NICKNAME_DUPLICATED"));
+        me(sub, "CUSTOMER").andExpect(jsonPath("$.nickname").value(mine)).andExpect(jsonPath("$.region").value("SEOUL"));
+    }
+
+    @Test
+    void 수정은_고객만_403_FORBIDDEN() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        for (String role : new String[] {"OWNER", "ADMIN", ""}) {
+            update(sub, role, "{\"region\":\"BUSAN\"}").andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        }
+        mockMvc.perform(patch("/members/me").contentType(MediaType.APPLICATION_JSON).content("{\"region\":\"BUSAN\"}")
+                .header("X-User-Role", "CUSTOMER")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 수정할_프로필이_없으면_404_MEMBER_PROFILE_NOT_FOUND() throws Exception {
+        update(sub(), "CUSTOMER", "{\"region\":\"BUSAN\"}").andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MEMBER_PROFILE_NOT_FOUND"));
+    }
+
+    @Test
+    void 수정_입력_규칙을_어기면_400_VALIDATION_ERROR() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        String[] bad = {
+                "{\"name\":\"김\"}",                 // 이름 2자 미만
+                "{\"name\":\"  \"}",                 // 공백만
+                "{\"name\":\"김경우1\"}",            // 이름에 숫자
+                "{\"nickname\":\"닉 네임\"}",        // 닉네임 공백
+                "{\"nickname\":\"a\"}",
+                "{}",                                  // 바꿀 칸이 없다
+                body(null, null, null),
+        };
+        for (String b : bad) {
+            update(sub, "CUSTOMER", b).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        }
+        update(sub, "CUSTOMER", "{\"region\":\"MARS\"}").andExpect(status().isBadRequest()); // 없는 시·도 (MB-02와 같다)
+        me(sub, "CUSTOMER").andExpect(jsonPath("$.name").value("김경우")).andExpect(jsonPath("$.region").value("SEOUL"));
+    }
+
+    @Test
+    void 이메일을_보내도_바뀌지_않는다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+
+        update(sub, "CUSTOMER", "{\"region\":\"BUSAN\",\"email\":\"x@test.com\"}").andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT email FROM member WHERE id = ?", String.class, sub)).isNull();
+    }
+
+    @Test
+    void 다른_회원들이_동시에_같은_새_닉네임으로_바꾸면_하나만_200이고_나머지는_409() throws Exception {
+        String[] subs = new String[4];
+        for (int i = 0; i < subs.length; i++) {
+            subs[i] = sub();
+            register(subs[i], "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+        }
+        String n = nick();
+        ExecutorService pool = Executors.newFixedThreadPool(subs.length);
+        try {
+            java.util.List<Future<Integer>> results = new java.util.ArrayList<>();
+            for (String s : subs) {
+                results.add(pool.submit(() -> update(s, "CUSTOMER", "{\"nickname\":\"" + n + "\"}")
+                        .andReturn().getResponse().getStatus()));
+            }
+            java.util.List<Integer> codes = new java.util.ArrayList<>();
+            for (Future<Integer> f : results) codes.add(f.get());
+            assertThat(codes).as("응답 코드 %s", codes).containsOnlyOnce(200);
+            assertThat(codes).as("응답 코드 %s", codes).filteredOn(c -> c == 409).hasSize(subs.length - 1);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member WHERE nickname_normalized = ?", Integer.class, n))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void 지역만_바꾸는_수정은_그사이_바뀐_이름을_옛_값으로_덮지_않는다() throws Exception {
+        String sub = sub();
+        register(sub, "CUSTOMER", body("김경우", nick(), "SEOUL")).andExpect(status().isCreated());
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
+            memberRepository.findById(sub).orElseThrow(); // 옛 값(김경우)을 먼저 읽어 둔다
+            // 다른 요청이 그사이 이름을 바꿔 커밋한 상황 (다른 연결)
+            ExecutorService other = Executors.newSingleThreadExecutor();
+            try {
+                other.submit(() -> jdbc.update("UPDATE member SET name = ? WHERE id = ?", "이태우", sub)).get();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            } finally {
+                other.shutdownNow();
+            }
+            memberService.updateProfile(sub, new ProfileUpdateRequest(null, null, Region.JEJU));
+        });
+
+        assertThat(jdbc.queryForObject("SELECT name FROM member WHERE id = ?", String.class, sub)).isEqualTo("이태우");
+        assertThat(jdbc.queryForObject("SELECT region FROM member WHERE id = ?", String.class, sub)).isEqualTo("JEJU");
     }
 }

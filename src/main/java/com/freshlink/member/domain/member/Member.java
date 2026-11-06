@@ -13,13 +13,18 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-/** 회원 (표 member, V1). 키는 Cognito sub. 고객은 이름·닉네임·지역, 점주는 이메일만 (표시 이름은 점포명) */
+/**
+ * 회원 (표 member, V1). 키는 Cognito sub. 고객은 이름·닉네임·지역, 점주는 이메일만 (표시 이름은 점포명).
+ * 바뀐 칸만 UPDATE한다(@DynamicUpdate): 같은 회원의 MB-04 요청이 겹쳐도 보내지 않은 칸을 옛 값으로 덮지 않는다
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "member")
 @EntityListeners(AuditingEntityListener.class)
 public class Member implements Persistable<String> {
@@ -96,6 +101,20 @@ public class Member implements Persistable<String> {
         m.role = MemberRole.OWNER;
         m.email = email;
         return m;
+    }
+
+    /** MB-04 고객 회원정보 수정: null이 아닌 칸만 바꾼다. 닉네임을 바꾸면 비교값도 같이 바꾼다 */
+    public void updateProfile(String name, String nickname, Region region) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nickname != null) {
+            this.nickname = nickname;
+            this.nicknameNormalized = normalizeNickname(nickname);
+        }
+        if (region != null) {
+            this.region = region;
+        }
     }
 
     /** 닉네임 비교값: 앞뒤 공백 제거 + 영문 소문자 (Fresh01 = fresh01) */
