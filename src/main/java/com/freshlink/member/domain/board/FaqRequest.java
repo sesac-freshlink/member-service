@@ -15,8 +15,8 @@ public record FaqRequest(
 ) {
 
     public FaqRequest {
-        question = question == null ? null : question.strip();
-        answer = answer == null ? null : answer.strip();
+        question = BoardText.trim(question);
+        answer = BoardText.trim(answer);
     }
 
     public int sortOrderOrZero() {

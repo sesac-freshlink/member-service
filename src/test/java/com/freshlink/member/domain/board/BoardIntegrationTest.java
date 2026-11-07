@@ -238,4 +238,23 @@ class BoardIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.question").value(question));
     }
+
+    @Test
+    void 제목_질문_앞뒤의_줄바꿈_없는_공백도_지우고_길이를_센다() throws Exception {
+        String title = "가".repeat(100);
+        String body = as("ADMIN", post("/admin/notices").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\" " + title + "  \",\"content\":\"y \",\"audience\":\"ALL\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = json.readTree(body).get("noticeId").asLong();
+        as("CUSTOMER", get("/members/notices/" + id))
+                .andExpect(jsonPath("$.title").value(title))
+                .andExpect(jsonPath("$.content").value("y"));
+
+        String question = "질".repeat(200);
+        as("ADMIN", post("/admin/faqs").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\" " + question + " \",\"answer\":\"a \",\"audience\":\"ALL\",\"sortOrder\":1}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.question").value(question))
+                .andExpect(jsonPath("$.answer").value("a"));
+    }
 }
