@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,6 +44,7 @@ class StoreSearchIntegrationTest {
         store("프레시 중단점", "서울 중구 1", "SEOUL", "INACTIVE");
         store("프레시 부산점", "부산 해운대구 1", "BUSAN", "ACTIVE");
         long apgujeong = store("가나 압구정점", "서울 강남구 압구정로 2", "SEOUL", "ACTIVE");
+        jdbc.update("UPDATE store SET latitude = 37.498095, longitude = 127.027610 WHERE id = ?", gangnam);
 
         mockMvc.perform(get("/stores"))
                 .andExpect(status().isOk())
@@ -51,7 +53,13 @@ class StoreSearchIntegrationTest {
                 .andExpect(jsonPath("$[0].storeCode").value("S" + apgujeong))
                 .andExpect(jsonPath("$[0].address").value("서울 강남구 압구정로 2"))
                 .andExpect(jsonPath("$[0].region").value("SEOUL"))
+                .andExpect(jsonPath("$[0].latitude").value(nullValue()))
+                .andExpect(jsonPath("$[0].longitude").value(nullValue()))
                 .andExpect(jsonPath("$[1].storeId").value(gangnam))
+                .andExpect(jsonPath("$[1].latitude").value(37.498095))
+                .andExpect(jsonPath("$[1].longitude").value(127.027610))
+                .andExpect(jsonPath("$[1].description").doesNotExist())
+                .andExpect(jsonPath("$[1].imageUrl").doesNotExist())
                 .andExpect(jsonPath("$[0].status").doesNotExist())
                 .andExpect(jsonPath("$[0].ownerMemberId").doesNotExist());
     }
