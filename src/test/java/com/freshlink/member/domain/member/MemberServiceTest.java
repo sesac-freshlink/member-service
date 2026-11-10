@@ -4,6 +4,7 @@ import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.Region;
 import com.freshlink.member.domain.store.StoreRepository;
+import com.freshlink.member.domain.withdrawal.MemberWithdrawalRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.CannotAcquireLockException;
@@ -27,8 +28,9 @@ class MemberServiceTest {
     MemberRepository members = mock(MemberRepository.class);
     SocialAccounts socialAccounts = mock(SocialAccounts.class);
     MemberService service = new MemberService(members, mock(StoreRepository.class),
-            new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts);
-    ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL);
+            new TransactionTemplate(mock(PlatformTransactionManager.class)), socialAccounts,
+            mock(MemberWithdrawalRepository.class));
+    ProfileRequest req = new ProfileRequest("김경우", "Fresh01", Region.SEOUL, true, true);
     Member existing = Member.customer(SUB, "김경우", "Fresh01", Region.SEOUL);
 
     @Test
@@ -105,5 +107,71 @@ class MemberServiceTest {
 
         assertThat(service.register(SUB, req).created()).isFalse();
         verify(socialAccounts, never()).emailSignupExistsFor(SUB);
+    }
+
+    // ---------------------------------------------------------------- MB-04
+
+    @Test
+    void 수정_닉네임_중복_검사는_내_sub를_빼고_본다() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.existsByNicknameNormalizedAndIdNot("fresh01", SUB)).thenReturn(false);
+
+        Member m = service.updateProfile(SUB, new ProfileUpdateRequest(null, "FRESH01", null));
+
+        assertThat(m.getNickname()).isEqualTo("FRESH01");
+        assertThat(m.getNicknameNormalized()).isEqualTo("fresh01");
+        assertThat(m.getName()).isEqualTo("김경우");
+        assertThat(m.getRegion()).isEqualTo(Region.SEOUL);
+        verify(members, never()).existsByNicknameNormalized(any());
+    }
+
+    @Test
+    void 수정_닉네임을_다른_회원이_쓰면_409이고_아무것도_안_바뀐다() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.existsByNicknameNormalizedAndIdNot("taken1", SUB)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest("이태우", "Taken1", Region.BUSAN)))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("NICKNAME_DUPLICATED"));
+        assertThat(existing.getName()).isEqualTo("김경우");
+        assertThat(existing.getRegion()).isEqualTo(Region.SEOUL);
+        assertThat(existing.getNickname()).isEqualTo("Fresh01");
+        assertThat(existing.getNicknameNormalized()).isEqualTo("fresh01");
+    }
+
+    @Test
+    void 닉네임을_안_보내면_중복_검사를_하지_않는다() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+
+        service.updateProfile(SUB, new ProfileUpdateRequest(null, null, Region.JEJU));
+
+        assertThat(existing.getRegion()).isEqualTo(Region.JEJU);
+        verify(members, never()).existsByNicknameNormalizedAndIdNot(any(), any());
+    }
+
+    @Test
+    void 점주_회원은_수정할_수_없다_403() {
+        when(members.findById(SUB)).thenReturn(Optional.of(Member.owner(SUB, "owner@test.com")));
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest(null, null, Region.JEJU)))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("FORBIDDEN"));
+    }
+
+    @Test
+    void 수정_저장_중_닉네임_UNIQUE_충돌이면_409() {
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.saveAndFlush(any(Member.class))).thenThrow(new DataIntegrityViolationException(
+                "Duplicate entry 'taken1' for key 'member.uk_member_nickname_normalized'"));
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest(null, "Taken1", null)))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.code()).isEqualTo("NICKNAME_DUPLICATED"));
+    }
+
+    @Test
+    void 수정_저장_중_닉네임_충돌이_아닌_무결성_오류는_그대로_던진다() {
+        DataIntegrityViolationException tooLong = new DataIntegrityViolationException("Data too long for column 'name'");
+        when(members.findById(SUB)).thenReturn(Optional.of(existing));
+        when(members.saveAndFlush(any(Member.class))).thenThrow(tooLong);
+
+        assertThatThrownBy(() -> service.updateProfile(SUB, new ProfileUpdateRequest("이태우", null, null))).isSameAs(tooLong);
     }
 }

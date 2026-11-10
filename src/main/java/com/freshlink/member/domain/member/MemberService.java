@@ -5,6 +5,9 @@ import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.error.UniqueKeys;
 import com.freshlink.member.domain.auth.SocialAccounts;
 import com.freshlink.member.domain.store.StoreRepository;
+import com.freshlink.member.domain.withdrawal.MemberWithdrawalRepository;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,18 +21,22 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class MemberService {
 
     private static final Logger log = LoggerFactory.getLogger(MemberService.class);
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final MemberRepository memberRepository;
     private final StoreRepository storeRepository;
     private final TransactionTemplate transactionTemplate;
     private final SocialAccounts socialAccounts;
+    private final MemberWithdrawalRepository withdrawalRepository;
 
     public MemberService(MemberRepository memberRepository, StoreRepository storeRepository,
-                         TransactionTemplate transactionTemplate, SocialAccounts socialAccounts) {
+                         TransactionTemplate transactionTemplate, SocialAccounts socialAccounts,
+                         MemberWithdrawalRepository withdrawalRepository) {
         this.memberRepository = memberRepository;
         this.storeRepository = storeRepository;
         this.transactionTemplate = transactionTemplate;
         this.socialAccounts = socialAccounts;
+        this.withdrawalRepository = withdrawalRepository;
     }
 
     /** MB-01: 정규화한 닉네임이 아직 없으면 사용 가능 (최종 검사는 MB-02 저장 때 UNIQUE로 한 번 더) */
@@ -41,12 +48,17 @@ public class MemberService {
     /**
      * MB-02 고객 프로필 등록. 같은 sub의 프로필이 있으면 새로 만들지 않고 그대로 돌려준다(created=false).
      * 바깥에 트랜잭션을 두지 않는다: UNIQUE 충돌이 나면 롤백이 끝난 뒤 새로 읽어 같은 sub인지 닉네임 중복인지 가린다.
-     * 구글로 처음 들어온 계정인데 같은 이메일로 이메일 가입한 계정이 있으면 409 EMAIL_SIGNUP_EXISTS (C-01 BFF, 10/29 막기)
+     * 구글로 처음 들어온 계정인데 같은 이메일로 이메일 가입한 계정이 있으면 409 EMAIL_SIGNUP_EXISTS (C-01 BFF, 10/29 막기).
+     * 탈퇴한 회원 ID(sub)면 409 WITHDRAWN_MEMBER: 탈퇴 전에 받은 토큰(최대 1시간)으로 프로필을 다시 만들지 못하게 한다.
+     * 다시 가입하면 Cognito가 새 sub를 주므로 막히지 않는다 (추가 명세 A6)
      */
     public RegisterResult register(String memberId, ProfileRequest req) {
         Optional<Member> existing = memberRepository.findById(memberId);
         if (existing.isPresent()) {
             return new RegisterResult(existing.get(), false);
+        }
+        if (withdrawalRepository.existsByMemberId(memberId)) {
+            throw new BusinessException(MemberErrorCode.WITHDRAWN_MEMBER);
         }
         if (socialAccounts.emailSignupExistsFor(memberId)) {
             throw new BusinessException(MemberErrorCode.EMAIL_SIGNUP_EXISTS);
@@ -58,8 +70,9 @@ public class MemberService {
                     .orElseThrow(() -> new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED));
         }
         try {
-            Member saved = transactionTemplate.execute(s -> memberRepository.saveAndFlush(
-                    Member.customer(memberId, req.name(), req.nickname(), req.region())));
+            Member member = Member.customer(memberId, req.name(), req.nickname(), req.region());
+            member.agreeTerms(MemberRules.TERMS_VERSION, MemberRules.PRIVACY_VERSION, OffsetDateTime.now(KST));
+            Member saved = transactionTemplate.execute(s -> memberRepository.saveAndFlush(member));
             log.info("고객 프로필 등록 memberId={} region={}", memberId, req.region());
             return new RegisterResult(saved, true);
         } catch (DataIntegrityViolationException | ConcurrencyFailureException e) {
@@ -85,6 +98,36 @@ public class MemberService {
             return MeResponse.owner(member, storeRepository.findByOwnerMemberId(memberId).orElse(null));
         }
         return MeResponse.customer(member);
+    }
+
+    /**
+     * MB-04 고객 회원정보 수정 (추가 명세 A3). 보낸 칸만 바꾼다. 닉네임 중복 검사에서 내 현재 닉네임은 뺀다.
+     * 두 사람이 동시에 같은 새 닉네임으로 바꾸면 미리 검사를 둘 다 통과할 수 있다. 그래서 바로 저장해(saveAndFlush)
+     * 닉네임 UNIQUE 충돌이면 MB-02처럼 409로 바꾼다. 그 밖의 무결성 오류는 그대로 던진다
+     */
+    @Transactional
+    public Member updateProfile(String memberId, ProfileUpdateRequest req) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_PROFILE_NOT_FOUND));
+        if (member.getRole() != MemberRole.CUSTOMER) {
+            throw new BusinessException(MemberErrorCode.FORBIDDEN);
+        }
+        if (req.nickname() != null && memberRepository.existsByNicknameNormalizedAndIdNot(
+                Member.normalizeNickname(req.nickname()), memberId)) {
+            throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+        }
+        member.updateProfile(req.name(), req.nickname(), req.region());
+        try {
+            memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException e) {
+            if (UniqueKeys.isViolation(e, UniqueKeys.MEMBER_NICKNAME)) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
+        log.info("고객 회원정보 수정 memberId={} name={} nickname={} region={}", memberId,
+                req.name() != null, req.nickname() != null, req.region() != null);
+        return member;
     }
 
     public record RegisterResult(Member member, boolean created) {

@@ -8,6 +8,13 @@ app:
     # AD-01 점주 계정 생성. User Pool ID는 인프라가 클러스터 공통 환경 변수로 넣는다
     user-pool-id: ${COGNITO_USER_POOL_ID:}
     region: ${AWS_REGION:ap-northeast-2}
+  order:
+    # 회원탈퇴 전 진행 중 주문 확인 (추가 명세 A6·order A14). 클러스터 안 Service 이름으로 부른다
+    base-url: ${ORDER_SERVICE_URI:http://order-service:8080}
+    timeout: 2s
+  withdrawal:
+    # 탈퇴 이력(이메일·시각) 보관 기간. 개인정보 처리방침 3장 "탈퇴 이력은 30일" (11/6 경우 결정)
+    retention: 30d
   store-image:
     # 점포 이미지는 프론트 버킷 안 images/stores/ 아래에 둔다. 버킷 이름은 인프라가 STORE_IMAGE_BUCKET으로 넣는다 (11/2 클러스터부터)
     bucket: ${STORE_IMAGE_BUCKET:}
