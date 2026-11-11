@@ -74,7 +74,7 @@ public class Banner {
         this.endsAt = req.endsAt();
     }
 
-    /** 순서 바꾸기(AD-17)에서만 쓴다 */
+    /** 순서만 바꾼다. 순서 바꾸기(AD-17)에서만 쓴다 */
     void moveTo(int sortOrder) {
         this.sortOrder = sortOrder;
     }

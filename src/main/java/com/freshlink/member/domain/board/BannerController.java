@@ -24,6 +24,7 @@ public class BannerController {
         this.bannerService = bannerService;
     }
 
+    /** BN-01 홈 배너 목록. 고객이 아니면 403, 고객이면 지금 홈에 보일 배너를 최대 5장 준다 */
     @GetMapping("/banners")
     public List<HomeBanner> banners(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         if (!AuthHeaders.hasRole(role, AuthHeaders.ROLE_CUSTOMER)) {

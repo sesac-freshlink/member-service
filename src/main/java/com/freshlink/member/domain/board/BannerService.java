@@ -100,7 +100,7 @@ public class BannerService {
         return all();
     }
 
-    /** 기간 앞뒤, 연결할 공지가 있는지 */
+    /** 저장 전에 확인한다: 노출 시작이 끝보다 빠른지(아니면 400), 연결할 공지가 있는지(없으면 404) */
     private void check(BannerRequest req) {
         if (!req.periodValid()) {
             throw new BusinessException(MemberErrorCode.BANNER_PERIOD_INVALID);
@@ -110,7 +110,7 @@ public class BannerService {
         }
     }
 
-    /** 확인한 뒤 그 공지가 같은 순간 지워지면 외래 키가 막는다. 그때도 공지가 없다고 답한다 */
+    /** 배너를 저장한다. 그 순간 연결할 공지가 지워져 외래 키에 걸리면 404, 공지와 상관없는 DB 오류는 그대로 올린다 */
     private Banner save(Banner b) {
         try {
             return bannerRepository.saveAndFlush(b);
@@ -122,11 +122,12 @@ public class BannerService {
         }
     }
 
+    /** 배너 한 장을 관리자 응답으로 바꾼다 (연결한 공지 제목을 붙인다) */
     private AdminBanner toAdmin(Banner b) {
         return toAdmin(List.of(b)).getFirst();
     }
 
-    /** 연결한 공지 제목을 한 번에 읽어 붙인다 */
+    /** 배너 여러 장을 관리자 응답으로 바꾼다. 연결한 공지 제목은 한 번에 읽어 붙인다 */
     private List<AdminBanner> toAdmin(List<Banner> banners) {
         Set<Long> noticeIds = banners.stream().map(Banner::getNoticeId).filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());

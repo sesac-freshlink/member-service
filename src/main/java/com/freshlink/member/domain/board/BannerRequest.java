@@ -27,11 +27,13 @@ public record BannerRequest(
     /** /banners/파일이름.jpg|jpeg|png|webp|svg (S3 연결 뒤에는 /images/banners/ 도) */
     static final String IMAGE_PATH = "^/(images/)?banners/[A-Za-z0-9][A-Za-z0-9._-]*\\.(jpg|jpeg|png|webp|svg)$";
 
+    /** 받은 제목·그림 경로의 앞뒤 공백을 지운다 (게시판 글과 같은 규칙) */
     public BannerRequest {
         title = BoardText.trim(title);
         imageUrl = BoardText.trim(imageUrl);
     }
 
+    /** 순서를 비웠으면 0 */
     public int sortOrderOrZero() {
         return sortOrder == null ? 0 : sortOrder;
     }
