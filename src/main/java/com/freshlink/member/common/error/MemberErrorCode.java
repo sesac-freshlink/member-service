@@ -28,7 +28,11 @@ public enum MemberErrorCode implements ErrorCode {
     WITHDRAWAL_CHECK_UNAVAILABLE(503, "지금은 주문 확인을 할 수 없어 탈퇴할 수 없습니다. 잠시 후 다시 시도해 주세요"),
     // 게시판 공지사항·FAQ (추가 명세 A17)
     NOTICE_NOT_FOUND(404, "공지사항이 없습니다"),
-    FAQ_NOT_FOUND(404, "질문이 없습니다");
+    FAQ_NOT_FOUND(404, "질문이 없습니다"),
+    // 홈 메인 배너 (추가 명세 A18)
+    BANNER_NOT_FOUND(404, "배너가 없습니다"),
+    BANNER_PERIOD_INVALID(400, "노출 시작은 끝보다 빨라야 합니다"),
+    BANNER_ORDER_INVALID(400, "지금 있는 배너를 모두 한 번씩 보내 주세요");
 
     private final int status;
     private final String message;
