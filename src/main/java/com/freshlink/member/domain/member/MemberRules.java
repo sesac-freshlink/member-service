@@ -15,5 +15,6 @@ public final class MemberRules {
 
     /** 지금 시행 중인 이용약관·개인정보 처리방침 버전 (추가 명세 A16, 화면 약관 글의 시행일과 같다) */
     public static final String TERMS_VERSION = "2026-11-06";
-    public static final String PRIVACY_VERSION = "2026-11-06";
+    /** 11/14 처리방침 3장 보관 기간 변경(주문·결제 기록 5년, 탈퇴 이력 5년). 다시 동의받지 않는다(11/6 결정) */
+    public static final String PRIVACY_VERSION = "2026-11-14";
 }
