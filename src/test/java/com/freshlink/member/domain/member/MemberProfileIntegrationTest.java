@@ -97,7 +97,7 @@ class MemberProfileIntegrationTest {
         var row = jdbc.queryForMap("SELECT terms_version, terms_agreed_at, privacy_version, privacy_agreed_at "
                 + "FROM member WHERE id = ?", sub);
         assertThat(row.get("terms_version")).isEqualTo("2026-11-06");
-        assertThat(row.get("privacy_version")).isEqualTo("2026-11-06");
+        assertThat(row.get("privacy_version")).isEqualTo("2026-11-14");
         assertThat(row.get("terms_agreed_at")).isNotNull();
         assertThat(row.get("privacy_agreed_at")).isEqualTo(row.get("terms_agreed_at"));
     }

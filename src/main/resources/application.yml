@@ -13,8 +13,9 @@ app:
     base-url: ${ORDER_SERVICE_URI:http://order-service:8080}
     timeout: 2s
   withdrawal:
-    # 탈퇴 이력(이메일·시각) 보관 기간. 개인정보 처리방침 3장 "탈퇴 이력은 30일" (11/6 경우 결정)
-    retention: 30d
+    # 탈퇴 이력(이메일·시각) 보관 기간 5년(1825일). 탈퇴 회원이 결제 내역을 요청할 때 본인을 찾는 데 쓴다.
+    # 개인정보 처리방침 3장 (11/14 경우 결정, 11/6 30일에서 바꿈)
+    retention: 1825d
   store-image:
     # 점포 이미지는 프론트 버킷 안 images/stores/ 아래에 둔다. 버킷 이름은 인프라가 STORE_IMAGE_BUCKET으로 넣는다 (11/2 클러스터부터)
     bucket: ${STORE_IMAGE_BUCKET:}
