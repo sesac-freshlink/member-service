@@ -91,11 +91,15 @@ class BannerIntegrationTest {
     // ---------------------------------------------------------------- 권한
 
     @Test
-    void 홈_배너는_고객만_볼_수_있다() throws Exception {
+    void 홈_배너는_고객과_로그인하지_않은_사람이_보고_점주_관리자는_못_본다() throws Exception {
         banner("11월 마감세일 주간", 0);
         as("CUSTOMER", get("/members/banners")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("11월 마감세일 주간"));
-        for (String role : new String[] {"OWNER", "ADMIN", ""}) {
+        // 로그인하지 않은 사람: gateway 공개 길이라 역할 헤더가 없다(11/15)
+        as("", get("/members/banners")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("11월 마감세일 주간"));
+        mockMvc.perform(get("/members/banners")).andExpect(status().isOk());
+        for (String role : new String[] {"OWNER", "ADMIN"}) {
             as(role, get("/members/banners")).andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("FORBIDDEN"));
         }
