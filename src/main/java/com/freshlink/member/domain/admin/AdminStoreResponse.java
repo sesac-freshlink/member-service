@@ -3,11 +3,13 @@ package com.freshlink.member.domain.admin;
 import com.freshlink.member.domain.store.Region;
 import com.freshlink.member.domain.store.Store;
 import com.freshlink.member.domain.store.StoreStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 /** AD-01·02·03 점포 한 줄. createdAt은 +09:00. 점포 상세 값(좌표·설명·이미지 주소)은 아직 없으면 null */
+@Schema(description = "AD-01·02·03 점포 한 줄. createdAt은 +09:00. 점포 상세 값(좌표·설명·이미지 주소)은 아직 없으면 null")
 public record AdminStoreResponse(Long storeId, String storeCode, String name, String address, Region region,
                                  StoreStatus status, String ownerEmail, OffsetDateTime createdAt,
                                  BigDecimal latitude, BigDecimal longitude, String description, String imageUrl) {

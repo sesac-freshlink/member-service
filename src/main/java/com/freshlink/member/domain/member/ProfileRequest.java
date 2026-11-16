@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.member;
 
 import com.freshlink.member.domain.store.Region;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Pattern;
  * MB-02 요청. 이름은 앞뒤 공백을 지운 값으로 검사한다 (compact 생성자).
  * 필수 약관(이용약관·개인정보 처리방침) 두 개에 모두 동의해야 한다 (추가 명세 A16)
  */
+@Schema(description = "MB-02 요청. 이름은 앞뒤 공백을 지운 값으로 검사한다 (compact 생성자). 필수 약관(이용약관·개인정보 처리방침) 두 개에 모두 동의해야 한다 (추가 명세 A16)")
 public record ProfileRequest(
         @NotNull(message = "필수입니다") @Pattern(regexp = MemberRules.NAME_REGEX, message = MemberRules.NAME_MESSAGE) String name,
         @NotNull(message = "필수입니다")

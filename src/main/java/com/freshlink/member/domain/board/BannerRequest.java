@@ -1,5 +1,6 @@
 package com.freshlink.member.domain.board;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -13,6 +14,7 @@ import java.time.OffsetDateTime;
  * 이미지는 지금 frontend 가 가진 그림 경로(/banners/…)만 받는다. S3 연결 뒤 /images/banners/… 도 받는다.
  * 경로는 같은 사이트 안이어야 해서 슬래시로 시작하고, 파일 이름에 다른 폴더(/)나 주소(:)를 넣을 수 없다
  */
+@Schema(description = "관리자 배너 등록·고치기 (추가 명세 A18, AD-14·AD-15). 모든 칸을 보낸다. 이미지는 지금 frontend 가 가진 그림 경로(/banners/…)만 받는다. S3 연결 뒤 /images/banners/… 도 받는다. 경로는 같은 사이트 안이어야 해서 슬래시로 시작하고, 파일 이름에 다른 폴더(/)나 주소(:)를 넣을 수 없다")
 public record BannerRequest(
         @NotBlank(message = "필수입니다") @Size(max = 50, message = "50자 이하여야 합니다") String title,
         @NotBlank(message = "필수입니다") @Size(max = 255, message = "255자 이하여야 합니다")

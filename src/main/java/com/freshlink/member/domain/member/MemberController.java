@@ -3,6 +3,7 @@ package com.freshlink.member.domain.member;
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -28,6 +29,7 @@ public class MemberController {
     }
 
     /** MB-01 닉네임 중복 확인 (공개). 형식이 틀리면 400 */
+    @Operation(summary = "MB-01 닉네임 중복 확인 (공개). 형식이 틀리면 400")
     @GetMapping("/nickname-availability")
     public NicknameAvailabilityResponse nicknameAvailability(
             @RequestParam(required = false) @NotNull(message = "필수입니다")
@@ -36,6 +38,7 @@ public class MemberController {
     }
 
     /** MB-02 고객 프로필 등록: 새로 저장 201, 이미 있으면 200 */
+    @Operation(summary = "MB-02 고객 프로필 등록: 새로 저장 201, 이미 있으면 200")
     @PostMapping("/me")
     public ResponseEntity<ProfileResponse> register(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,
@@ -50,6 +53,7 @@ public class MemberController {
     }
 
     /** MB-04 고객 회원정보 수정 (추가 명세 A3): 보낸 칸만 바꾼다. 이메일은 바꿀 수 없다 */
+    @Operation(summary = "MB-04 고객 회원정보 수정 (추가 명세 A3): 보낸 칸만 바꾼다. 이메일은 바꿀 수 없다")
     @PatchMapping("/me")
     public ProfileResponse update(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,
@@ -62,6 +66,7 @@ public class MemberController {
     }
 
     /** MB-03 내 정보 (CUSTOMER·OWNER) */
+    @Operation(summary = "MB-03 내 정보 (CUSTOMER·OWNER)")
     @GetMapping("/me")
     public MeResponse me(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,

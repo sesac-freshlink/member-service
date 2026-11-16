@@ -5,6 +5,7 @@ import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
 import com.freshlink.member.domain.admin.StoreImageUploadUrlRequest;
 import com.freshlink.member.domain.store.StoreImageUploads;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,6 +27,7 @@ public class OwnerStoreController {
     }
 
     /** OW-01 내 점포 조회 */
+    @Operation(summary = "OW-01 내 점포 조회")
     @GetMapping
     public OwnerStoreResponse get(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,
@@ -35,6 +37,7 @@ public class OwnerStoreController {
     }
 
     /** OW-02 내 점포 수정 (설명·이미지만, 보낸 필드만) */
+    @Operation(summary = "OW-02 내 점포 수정 (설명·이미지만, 보낸 필드만)")
     @PatchMapping
     public OwnerStoreResponse update(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,
@@ -44,7 +47,8 @@ public class OwnerStoreController {
         return ownerStoreService.update(userId, request);
     }
 
-    /** OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT 5분). 본문이 없거나 contentType이 없으면 image/jpeg */
+    /** OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문이 없거나 contentType이 없으면 image/jpeg */
+    @Operation(summary = "OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문이 없거나 contentType이 없으면 image/jpeg")
     @PostMapping("/image-upload-url")
     public StoreImageUploads.UploadUrl imageUploadUrl(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,

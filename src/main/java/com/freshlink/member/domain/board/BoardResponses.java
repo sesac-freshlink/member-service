@@ -1,5 +1,6 @@
 package com.freshlink.member.domain.board;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
@@ -12,6 +13,7 @@ public final class BoardResponses {
     }
 
     /** 공지 목록 한 줄 (본문 없음) */
+    @Schema(description = "공지 목록 한 줄 (본문 없음)")
     public record NoticeSummary(Long noticeId, String title, Audience audience, boolean pinned,
                                 OffsetDateTime createdAt) {
         static NoticeSummary from(Notice n) {
@@ -20,6 +22,7 @@ public final class BoardResponses {
     }
 
     /** 공지 상세 */
+    @Schema(description = "공지 상세")
     public record NoticeDetail(Long noticeId, String title, String content, Audience audience, boolean pinned,
                                OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         static NoticeDetail from(Notice n) {
@@ -29,6 +32,7 @@ public final class BoardResponses {
     }
 
     /** FAQ 한 줄 */
+    @Schema(description = "FAQ 한 줄")
     public record FaqItem(Long faqId, String question, String answer, Audience audience, int sortOrder) {
         static FaqItem from(Faq f) {
             return new FaqItem(f.getId(), f.getQuestion(), f.getAnswer(), f.getAudience(), f.getSortOrder());

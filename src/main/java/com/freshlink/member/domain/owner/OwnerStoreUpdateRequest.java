@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.owner;
 
 import com.freshlink.member.domain.store.Region;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -9,6 +10,7 @@ import java.math.BigDecimal;
  * OW-02 요청. 점주는 설명·이미지 키만 보낸다. 이름·주소·시도·좌표 칸은 관리자만 바꾸므로(AD-03),
  * 받아서 하나라도 오면 400으로 막는다(모르는 칸으로 조용히 무시하지 않으려고 칸을 둔다)
  */
+@Schema(description = "OW-02 요청. 점주는 설명·이미지 키만 보낸다. 이름·주소·시도·좌표 칸은 관리자만 바꾸므로(AD-03), 받아서 하나라도 오면 400으로 막는다(모르는 칸으로 조용히 무시하지 않으려고 칸을 둔다)")
 public record OwnerStoreUpdateRequest(
         String name,
         String address,
