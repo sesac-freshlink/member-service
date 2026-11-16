@@ -23,7 +23,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
  * 키는 서버가 images/stores/{storeId}/{uuid}.jpg(또는 .png)로 정하고, 5분짜리 presigned PUT 주소를 준다.
  * 형식은 화면이 고른 image/jpeg·image/png 중 하나이고(안 보내면 image/jpeg), 그 Content-Type을 서명에 넣는다
  * (브라우저가 다른 형식으로 올리면 S3가 거절한다). 11/2 PNG 추가(김진아님 답변: infra는 확장자를 가리지 않는다).
- * 버킷은 STORE_IMAGE_BUCKET(프론트 버킷). 화면은 같은 주소 /images/...로 읽는다
+ * 버킷은 STORE_IMAGE_BUCKET(프론트 버킷). 화면은 같은 주소 /images/...로 읽는다.
+ * 관리자 메인배너 그림(추가 명세 A18, 11/16)도 같은 방식으로 images/banners/{uuid}.jpg(또는 .png)에 올린다
  */
 @Component
 public class StoreImageUploads {
@@ -33,6 +34,8 @@ public class StoreImageUploads {
     static final String DEFAULT_CONTENT_TYPE = "image/jpeg";
     /** 받는 형식 → 키 확장자 */
     static final Map<String, String> EXTENSIONS = Map.of("image/jpeg", ".jpg", "image/png", ".png");
+    /** 메인배너 그림 키 앞부분. 저장 값은 앞에 /를 붙인 /images/banners/{uuid}.jpg 이다 */
+    static final String BANNER_PREFIX = "images/banners/";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final Pattern UUID_PART =
             Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
@@ -50,6 +53,15 @@ public class StoreImageUploads {
 
     /** 그 점포의 새 이미지 키와 업로드 주소. contentType이 없으면 image/jpeg, JPG·PNG가 아니면 400 */
     public UploadUrl issue(Long storeId, String contentType) {
+        return issueAt(keyPrefix(storeId), contentType, "storeId=" + storeId);
+    }
+
+    /** 관리자 메인배너 그림의 새 키와 업로드 주소 (AD-18). 형식 규칙은 점포 이미지와 같다 */
+    public UploadUrl issueBanner(String contentType) {
+        return issueAt(BANNER_PREFIX, contentType, "banner");
+    }
+
+    private UploadUrl issueAt(String prefix, String contentType, String target) {
         String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
         String extension = EXTENSIONS.get(type);
         if (extension == null) {
@@ -57,10 +69,10 @@ public class StoreImageUploads {
         }
         if (bucket == null || bucket.isBlank()) {
             // 부르기 전에 알 수 있는 설정 오류다 (STORE_IMAGE_BUCKET은 11/2 클러스터부터 들어간다). 개발자가 볼 수 있게 남긴다
-            log.error("STORE_IMAGE_BUCKET이 설정되지 않아 이미지 업로드 주소를 만들지 않는다 storeId={}", storeId);
+            log.error("STORE_IMAGE_BUCKET이 설정되지 않아 이미지 업로드 주소를 만들지 않는다 {}", target);
             throw new BusinessException(MemberErrorCode.STORE_IMAGE_NOT_CONFIGURED);
         }
-        String key = keyPrefix(storeId) + UUID.randomUUID() + extension;
+        String key = prefix + UUID.randomUUID() + extension;
         PutObjectRequest put = PutObjectRequest.builder().bucket(bucket).key(key).contentType(type).build();
         PresignedPutObjectRequest signed = presigner.presignPutObject(PutObjectPresignRequest.builder()
                 .signatureDuration(ttl).putObjectRequest(put).build());
