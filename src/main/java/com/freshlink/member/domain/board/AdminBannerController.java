@@ -3,7 +3,9 @@ package com.freshlink.member.domain.board;
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
+import com.freshlink.member.domain.admin.StoreImageUploadUrlRequest;
 import com.freshlink.member.domain.board.BannerResponses.AdminBanner;
+import com.freshlink.member.domain.store.StoreImageUploads;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -27,9 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminBannerController {
 
     private final BannerService bannerService;
+    private final StoreImageUploads imageUploads;
 
-    public AdminBannerController(BannerService bannerService) {
+    public AdminBannerController(BannerService bannerService, StoreImageUploads imageUploads) {
         this.bannerService = bannerService;
+        this.imageUploads = imageUploads;
     }
 
     /** AD-13 모든 배너를 순서대로 준다 (꺼 둔 것·기간 밖 포함) */
@@ -68,6 +72,20 @@ public class AdminBannerController {
         requireAdmin(role);
         bannerService.delete(bannerId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * AD-18 배너 그림 업로드 주소 발급 (11/16). 점포 이미지 업로드 주소와 같은 방식이다: presigned PUT, 기본 5분(실제 만료 시각은 응답 expiresAt).
+     * 본문 {"contentType": "image/jpeg" | "image/png"}이고, 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 그림을 올린 뒤
+     * imageUrl(/images/banners/{uuid}.jpg)을 AD-14·AD-15 배너 imageUrl에 넣는다
+     */
+    @Operation(summary = "AD-18 배너 그림 업로드 주소 발급 (presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문 contentType은 image/jpeg 또는 image/png(없으면 image/jpeg). 올린 뒤 imageUrl을 배너 등록·고치기에 넣는다")
+    @PostMapping("/image-upload-url")
+    public StoreImageUploads.UploadUrl imageUploadUrl(
+            @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
+            @RequestBody(required = false) StoreImageUploadUrlRequest request) {
+        requireAdmin(role);
+        return imageUploads.issueBanner(request == null ? null : request.contentType());
     }
 
     /** AD-17 지금 있는 배너 전부를 받은 순서대로 0부터 다시 매긴다 */
