@@ -8,6 +8,7 @@ import com.freshlink.member.domain.board.BoardResponses.FaqItem;
 import com.freshlink.member.domain.board.BoardResponses.NoticeDetail;
 import com.freshlink.member.domain.board.BoardResponses.NoticeSummary;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -78,6 +79,7 @@ public class AdminBoardController {
 
     /** AD-08 공지를 지운다 (204). 연결된 배너는 연결만 끊긴다 */
     @Operation(summary = "AD-08 공지를 지운다 (204). 연결된 배너는 연결만 끊긴다")
+    @ApiResponse(responseCode = "204", description = "공지를 지웠다")
     @DeleteMapping("/notices/{noticeId}")
     public ResponseEntity<Void> deleteNotice(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                              @PathVariable Long noticeId) {
@@ -115,6 +117,7 @@ public class AdminBoardController {
 
     /** AD-12 FAQ를 지운다 (204) */
     @Operation(summary = "AD-12 FAQ를 지운다 (204)")
+    @ApiResponse(responseCode = "204", description = "FAQ를 지웠다")
     @DeleteMapping("/faqs/{faqId}")
     public ResponseEntity<Void> deleteFaq(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                           @PathVariable Long faqId) {

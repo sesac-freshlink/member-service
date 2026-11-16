@@ -25,8 +25,8 @@ public class BannerController {
         this.bannerService = bannerService;
     }
 
-    /** BN-01 홈 배너 목록. 점주·관리자면 403, 로그인하지 않았거나 고객이면 지금 홈에 보일 배너를 최대 5장 준다 */
-    @Operation(summary = "BN-01 홈 배너 목록. 점주·관리자면 403, 로그인하지 않았거나 고객이면 지금 홈에 보일 배너를 최대 5장 준다")
+    /** BN-01 홈 배너 목록. 로그인했는데 역할에 고객이 없으면(점주·관리자만) 403, 로그인하지 않았거나 역할에 고객이 있으면 지금 홈에 보일 배너를 최대 5장 준다 */
+    @Operation(summary = "BN-01 홈 배너 목록. 로그인했는데 역할에 고객이 없으면(점주·관리자만) 403, 로그인하지 않았거나 역할에 고객이 있으면 지금 홈에 보일 배너를 최대 5장 준다")
     @GetMapping("/banners")
     public List<HomeBanner> banners(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         boolean guest = role == null || role.isBlank();

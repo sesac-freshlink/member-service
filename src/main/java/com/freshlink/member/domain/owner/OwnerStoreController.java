@@ -47,8 +47,8 @@ public class OwnerStoreController {
         return ownerStoreService.update(userId, request);
     }
 
-    /** OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT 5분). 본문이 없거나 contentType이 없으면 image/jpeg */
-    @Operation(summary = "OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT 5분). 본문이 없거나 contentType이 없으면 image/jpeg")
+    /** OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문이 없거나 contentType이 없으면 image/jpeg */
+    @Operation(summary = "OW-03 내 점포 이미지 업로드 주소 (관리자와 같은 presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문이 없거나 contentType이 없으면 image/jpeg")
     @PostMapping("/image-upload-url")
     public StoreImageUploads.UploadUrl imageUploadUrl(
             @RequestHeader(name = AuthHeaders.USER_ID, required = false) String userId,

@@ -5,6 +5,7 @@ import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
 import com.freshlink.member.domain.board.BannerResponses.AdminBanner;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -60,6 +61,7 @@ public class AdminBannerController {
 
     /** AD-16 배너를 바로 지운다. 없는 배너면 404 */
     @Operation(summary = "AD-16 배너를 바로 지운다. 없는 배너면 404")
+    @ApiResponse(responseCode = "204", description = "배너를 지웠다")
     @DeleteMapping("/{bannerId}")
     public ResponseEntity<Void> delete(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                        @PathVariable Long bannerId) {

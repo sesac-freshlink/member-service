@@ -65,10 +65,10 @@ public class AdminStoreController {
     }
 
     /**
-     * 점포 이미지 업로드 주소 발급 (presigned PUT 5분). 본문 {"contentType": "image/jpeg" | "image/png"}이고,
+     * 점포 이미지 업로드 주소 발급 (presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문 {"contentType": "image/jpeg" | "image/png"}이고,
      * 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다
      */
-    @Operation(summary = "점포 이미지 업로드 주소 발급 (presigned PUT 5분). 본문 {\"contentType\": \"image/jpeg\" | \"image/png\"}이고, 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다")
+    @Operation(summary = "점포 이미지 업로드 주소 발급 (presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문 {\"contentType\": \"image/jpeg\" | \"image/png\"}이고, 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다")
     @PostMapping("/{storeId}/image-upload-url")
     public StoreImageUploads.UploadUrl imageUploadUrl(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
