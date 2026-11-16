@@ -1,6 +1,7 @@
 package com.freshlink.member.domain.admin;
 
 import com.freshlink.member.domain.store.Region;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
  * AD-03 요청. 보낸 필드만 바꾼다. 점포명은 앞뒤 공백을 지운 뒤 2~30자, 주소는 비어 있으면 안 된다.
  * 점포 상세 값(협의안 ⑤): 위도·경도(소수 6자리), 설명(500자), 이미지 키(업로드 주소 발급에서 받은 키)
  */
+@Schema(description = "AD-03 요청. 보낸 필드만 바꾼다. 점포명은 앞뒤 공백을 지운 뒤 2~30자, 주소는 비어 있으면 안 된다. 점포 상세 값(협의안 ⑤): 위도·경도(소수 6자리), 설명(500자), 이미지 키(업로드 주소 발급에서 받은 키)")
 public record AdminStoreUpdateRequest(
         @Size(min = 2, max = 30, message = "2~30자여야 합니다") String name,
         @Size(max = 255, message = "255자 이하여야 합니다") @Pattern(regexp = ".*\\S.*", message = "비어 있으면 안 됩니다") String address,

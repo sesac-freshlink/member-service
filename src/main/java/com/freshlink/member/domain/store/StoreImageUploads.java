@@ -2,6 +2,7 @@ package com.freshlink.member.domain.store;
 
 import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -86,6 +87,7 @@ public class StoreImageUploads {
     }
 
     /** uploadUrl로 PUT(Content-Type은 contentType 그대로)한 뒤 imageKey를 점포 수정에 넣는다. imageUrl은 화면이 읽는 주소 */
+    @Schema(description = "uploadUrl로 PUT(Content-Type은 contentType 그대로)한 뒤 imageKey를 점포 수정에 넣는다. imageUrl은 화면이 읽는 주소")
     public record UploadUrl(String uploadUrl, String imageKey, String imageUrl, String contentType,
                             OffsetDateTime expiresAt) {
     }

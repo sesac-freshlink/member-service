@@ -1,5 +1,6 @@
 package com.freshlink.member.domain.store;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ public class StoreController {
     }
 
     /** ST-01 점포 검색: region 없으면 SEOUL, keyword는 점포명·주소 일부. 점포명순, 페이지 없음 */
+    @Operation(summary = "ST-01 점포 검색: region 없으면 SEOUL, keyword는 점포명·주소 일부. 점포명순, 페이지 없음")
     @GetMapping
     public List<StoreSearchResponse> search(
             @RequestParam(required = false, defaultValue = "SEOUL") Region region,
@@ -31,6 +33,7 @@ public class StoreController {
     }
 
     /** 점포 상세 (공개): 운영 중인 점포의 이름·주소·지도 좌표·설명·이미지. 없으면 404 STORE_NOT_FOUND */
+    @Operation(summary = "점포 상세 (공개): 운영 중인 점포의 이름·주소·지도 좌표·설명·이미지. 없으면 404 STORE_NOT_FOUND")
     @GetMapping("/{storeId}")
     public StoreDetailResponse detail(@PathVariable Long storeId) {
         return StoreDetailResponse.from(storeService.detail(storeId));

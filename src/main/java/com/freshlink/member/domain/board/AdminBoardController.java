@@ -7,6 +7,7 @@ import com.freshlink.member.domain.admin.PageResponse;
 import com.freshlink.member.domain.board.BoardResponses.FaqItem;
 import com.freshlink.member.domain.board.BoardResponses.NoticeDetail;
 import com.freshlink.member.domain.board.BoardResponses.NoticeSummary;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -36,6 +37,8 @@ public class AdminBoardController {
         this.boardService = boardService;
     }
 
+    /** AD-04 공지 목록 (모든 대상, 고정 먼저 최신순 20개씩) */
+    @Operation(summary = "AD-04 공지 목록 (모든 대상, 고정 먼저 최신순 20개씩)")
     @GetMapping("/notices")
     public PageResponse<NoticeSummary> notices(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
@@ -45,6 +48,8 @@ public class AdminBoardController {
         return boardService.allNotices(page);
     }
 
+    /** AD-05 공지 하나를 본다 (모든 대상). 없으면 404 */
+    @Operation(summary = "AD-05 공지 하나를 본다 (모든 대상). 없으면 404")
     @GetMapping("/notices/{noticeId}")
     public NoticeDetail notice(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                @PathVariable Long noticeId) {
@@ -52,6 +57,8 @@ public class AdminBoardController {
         return boardService.anyNotice(noticeId);
     }
 
+    /** AD-06 공지를 쓴다 (201) */
+    @Operation(summary = "AD-06 공지를 쓴다 (201)")
     @PostMapping("/notices")
     @ResponseStatus(HttpStatus.CREATED)
     public NoticeDetail createNotice(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
@@ -60,6 +67,8 @@ public class AdminBoardController {
         return boardService.createNotice(request);
     }
 
+    /** AD-07 공지의 모든 칸을 고친다. 없으면 404 */
+    @Operation(summary = "AD-07 공지의 모든 칸을 고친다. 없으면 404")
     @PutMapping("/notices/{noticeId}")
     public NoticeDetail updateNotice(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                      @PathVariable Long noticeId, @Valid @RequestBody NoticeRequest request) {
@@ -67,6 +76,8 @@ public class AdminBoardController {
         return boardService.updateNotice(noticeId, request);
     }
 
+    /** AD-08 공지를 지운다 (204). 연결된 배너는 연결만 끊긴다 */
+    @Operation(summary = "AD-08 공지를 지운다 (204). 연결된 배너는 연결만 끊긴다")
     @DeleteMapping("/notices/{noticeId}")
     public ResponseEntity<Void> deleteNotice(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                              @PathVariable Long noticeId) {
@@ -75,12 +86,16 @@ public class AdminBoardController {
         return ResponseEntity.noContent().build();
     }
 
+    /** AD-09 FAQ 목록 (모든 대상, 순서대로) */
+    @Operation(summary = "AD-09 FAQ 목록 (모든 대상, 순서대로)")
     @GetMapping("/faqs")
     public List<FaqItem> faqs(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         requireAdmin(role);
         return boardService.allFaqs();
     }
 
+    /** AD-10 FAQ를 쓴다 (201) */
+    @Operation(summary = "AD-10 FAQ를 쓴다 (201)")
     @PostMapping("/faqs")
     @ResponseStatus(HttpStatus.CREATED)
     public FaqItem createFaq(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
@@ -89,6 +104,8 @@ public class AdminBoardController {
         return boardService.createFaq(request);
     }
 
+    /** AD-11 FAQ의 모든 칸을 고친다. 없으면 404 */
+    @Operation(summary = "AD-11 FAQ의 모든 칸을 고친다. 없으면 404")
     @PutMapping("/faqs/{faqId}")
     public FaqItem updateFaq(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                              @PathVariable Long faqId, @Valid @RequestBody FaqRequest request) {
@@ -96,6 +113,8 @@ public class AdminBoardController {
         return boardService.updateFaq(faqId, request);
     }
 
+    /** AD-12 FAQ를 지운다 (204) */
+    @Operation(summary = "AD-12 FAQ를 지운다 (204)")
     @DeleteMapping("/faqs/{faqId}")
     public ResponseEntity<Void> deleteFaq(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
                                           @PathVariable Long faqId) {

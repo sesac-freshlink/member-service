@@ -1,5 +1,6 @@
 package com.freshlink.member.domain.board;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
@@ -12,6 +13,7 @@ public final class BannerResponses {
     }
 
     /** BN-01 홈 배너 한 장 (frontend HomeBanner 와 같은 모양) */
+    @Schema(description = "BN-01 홈 배너 한 장 (frontend HomeBanner 와 같은 모양)")
     public record HomeBanner(Long bannerId, String title, String imageUrl, Long noticeId) {
         /** 배너를 홈 응답 한 장으로 바꾼다 */
         static HomeBanner from(Banner b) {
@@ -20,6 +22,7 @@ public final class BannerResponses {
     }
 
     /** AD-13~AD-17 관리자 목록 한 줄. noticeTitle 은 화면 표시용(공지가 없으면 null) */
+    @Schema(description = "AD-13~AD-17 관리자 목록 한 줄. noticeTitle 은 화면 표시용(공지가 없으면 null)")
     public record AdminBanner(Long bannerId, String title, String imageUrl, Long noticeId, String noticeTitle,
                               int sortOrder, boolean visible, OffsetDateTime startsAt, OffsetDateTime endsAt,
                               OffsetDateTime createdAt, OffsetDateTime updatedAt) {

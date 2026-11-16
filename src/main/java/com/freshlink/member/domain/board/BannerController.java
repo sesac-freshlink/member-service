@@ -4,6 +4,7 @@ import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
 import com.freshlink.member.domain.board.BannerResponses.HomeBanner;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -25,6 +26,7 @@ public class BannerController {
     }
 
     /** BN-01 홈 배너 목록. 점주·관리자면 403, 로그인하지 않았거나 고객이면 지금 홈에 보일 배너를 최대 5장 준다 */
+    @Operation(summary = "BN-01 홈 배너 목록. 점주·관리자면 403, 로그인하지 않았거나 고객이면 지금 홈에 보일 배너를 최대 5장 준다")
     @GetMapping("/banners")
     public List<HomeBanner> banners(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         boolean guest = role == null || role.isBlank();
