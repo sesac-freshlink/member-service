@@ -11,7 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
-/** 탈퇴 이력 (표 member_withdrawal, V4, 추가 명세 A7). 30일 보관 */
+/** 탈퇴 이력 (표 member_withdrawal, V4, 추가 명세 A7). 5년 보관 (11/14 경우 결정) */
 @Entity
 @Table(name = "member_withdrawal")
 public class MemberWithdrawal {

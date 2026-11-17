@@ -44,7 +44,7 @@ public class WithdrawalService {
     public WithdrawalService(MemberRepository memberRepository, MemberWithdrawalRepository withdrawalRepository,
                              OrderActivity orderActivity, CustomerAccounts customerAccounts,
                              TransactionTemplate transactionTemplate,
-                             @Value("${app.withdrawal.retention:30d}") Duration retention) {
+                             @Value("${app.withdrawal.retention:1825d}") Duration retention) {
         this.memberRepository = memberRepository;
         this.withdrawalRepository = withdrawalRepository;
         this.orderActivity = orderActivity;
@@ -94,7 +94,7 @@ public class WithdrawalService {
         log.info("회원탈퇴 memberId={} role={}", memberId, member.getRole());
     }
 
-    /** 보관 기간(30일)이 지난 탈퇴 이력을 하루 한 번 지운다. 여러 파드가 같이 돌아도 결과는 같다 */
+    /** 보관 기간(5년, 11/14 경우 결정)이 지난 탈퇴 이력을 하루 한 번 지운다. 여러 파드가 같이 돌아도 결과는 같다 */
     @Scheduled(cron = "${app.withdrawal.cleanup-cron:0 30 4 * * *}", zone = "Asia/Seoul")
     public void deleteExpiredHistory() {
         int deleted = transactionTemplate.execute(s ->

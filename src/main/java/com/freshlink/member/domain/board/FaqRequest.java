@@ -1,5 +1,6 @@
 package com.freshlink.member.domain.board;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /** 관리자 FAQ 쓰기·고치기. 모든 칸을 보낸다. 순서는 0~9999, 작을수록 위 (없으면 0) */
+@Schema(description = "관리자 FAQ 쓰기·고치기. 모든 칸을 보낸다. 순서는 0~9999, 작을수록 위 (없으면 0)")
 public record FaqRequest(
         @NotBlank(message = "필수입니다") @Size(max = 200, message = "200자 이하여야 합니다") String question,
         @NotBlank(message = "필수입니다") @Size(max = 2000, message = "2000자 이하여야 합니다") String answer,

@@ -1,10 +1,12 @@
 package com.freshlink.member.domain.member;
 
 import com.freshlink.member.domain.store.Region;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 /** MB-02 응답. createdAt은 +09:00 */
+@Schema(description = "MB-02 응답. createdAt은 +09:00")
 public record ProfileResponse(String memberId, MemberRole role, String name, String nickname, Region region,
                               OffsetDateTime createdAt) {
 

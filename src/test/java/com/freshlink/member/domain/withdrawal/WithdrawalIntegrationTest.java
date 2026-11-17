@@ -140,15 +140,15 @@ class WithdrawalIntegrationTest {
     }
 
     @Test
-    void 보관_기간_30일_경계_앞뒤로_지난_이력만_지운다() {
+    void 보관_기간_5년_경계_앞뒤로_지난_이력만_지운다() {
         String old = UUID.randomUUID().toString();
         String recent = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.ofHours(9));
-        // 실제 저장 경로(JPA)로 넣고, 30일에서 1시간씩 앞뒤라 시간대(9시간) 계산이 틀리면 결과가 바뀐다
+        // 실제 저장 경로(JPA)로 넣고, 5년(1825일)에서 1시간씩 앞뒤라 시간대(9시간) 계산이 틀리면 결과가 바뀐다
         withdrawalRepository.save(MemberWithdrawal.self(old, "a@test.com", MemberRole.CUSTOMER,
-                now.minusDays(30).minusHours(1)));
+                now.minusDays(1825).minusHours(1)));
         withdrawalRepository.save(MemberWithdrawal.self(recent, "a@test.com", MemberRole.CUSTOMER,
-                now.minusDays(30).plusHours(1)));
+                now.minusDays(1825).plusHours(1)));
 
         withdrawalService.deleteExpiredHistory();
 

@@ -7,6 +7,7 @@ import com.freshlink.member.domain.admin.PageResponse;
 import com.freshlink.member.domain.board.BoardResponses.FaqItem;
 import com.freshlink.member.domain.board.BoardResponses.NoticeDetail;
 import com.freshlink.member.domain.board.BoardResponses.NoticeSummary;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -32,6 +33,7 @@ public class BoardController {
     }
 
     /** BD-01 공지 목록 (고정 먼저, 최신순 20개씩) */
+    @Operation(summary = "BD-01 공지 목록 (고정 먼저, 최신순 20개씩)")
     @GetMapping("/notices")
     public PageResponse<NoticeSummary> notices(
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "0 이상이어야 합니다")
@@ -41,6 +43,7 @@ public class BoardController {
     }
 
     /** BD-02 공지 상세 */
+    @Operation(summary = "BD-02 공지 상세")
     @GetMapping("/notices/{noticeId}")
     public NoticeDetail notice(@PathVariable Long noticeId,
                                @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
@@ -48,6 +51,7 @@ public class BoardController {
     }
 
     /** BD-03 FAQ 목록 */
+    @Operation(summary = "BD-03 FAQ 목록")
     @GetMapping("/faqs")
     public List<FaqItem> faqs(@RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role) {
         return boardService.faqs(isOwner(role));

@@ -4,6 +4,7 @@ import com.freshlink.common.error.BusinessException;
 import com.freshlink.member.common.error.MemberErrorCode;
 import com.freshlink.member.common.web.AuthHeaders;
 import com.freshlink.member.domain.store.StoreImageUploads;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,7 @@ public class AdminStoreController {
     }
 
     /** AD-01 점포·점주 등록 */
+    @Operation(summary = "AD-01 점포·점주 등록")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AdminStoreResponse register(
@@ -42,6 +44,7 @@ public class AdminStoreController {
     }
 
     /** AD-02 점포 목록 (page는 0부터, 크기 20 고정) */
+    @Operation(summary = "AD-02 점포 목록 (page는 0부터, 크기 20 고정)")
     @GetMapping
     public PageResponse<AdminStoreResponse> list(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
@@ -51,6 +54,7 @@ public class AdminStoreController {
     }
 
     /** AD-03 점포 수정 (보낸 필드만) */
+    @Operation(summary = "AD-03 점포 수정 (보낸 필드만)")
     @PatchMapping("/{storeId}")
     public AdminStoreResponse update(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
@@ -61,9 +65,10 @@ public class AdminStoreController {
     }
 
     /**
-     * 점포 이미지 업로드 주소 발급 (presigned PUT 5분). 본문 {"contentType": "image/jpeg" | "image/png"}이고,
+     * 점포 이미지 업로드 주소 발급 (presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문 {"contentType": "image/jpeg" | "image/png"}이고,
      * 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다
      */
+    @Operation(summary = "점포 이미지 업로드 주소 발급 (presigned PUT, 기본 5분. 실제 만료 시각은 응답 expiresAt). 본문 {\"contentType\": \"image/jpeg\" | \"image/png\"}이고, 본문이 없거나 contentType이 없으면 image/jpeg. 화면은 uploadUrl로 이미지를 올린 뒤 imageKey를 AD-03 점포 수정에 넣는다")
     @PostMapping("/{storeId}/image-upload-url")
     public StoreImageUploads.UploadUrl imageUploadUrl(
             @RequestHeader(name = AuthHeaders.USER_ROLE, required = false) String role,
